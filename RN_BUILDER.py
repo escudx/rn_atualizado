@@ -48,6 +48,10 @@ def _theme_color(widget: str, option: str, fallback):
 CAPSULE_BG = _theme_color("CTkTextbox", "fg_color", ("gray24", "gray80"))
 CAPSULE_BORDER = _theme_color("CTkFrame", "border_color", ("gray32", "gray72"))
 CAPSULE_TEXT = _theme_color("CTkLabel", "text_color", ("white", "#1a1a1a"))
+ACTION_BAR_BG = ("#1f1f28", "#d9d9e3")
+ACTION_BAR_BORDER = ("#2d2d38", "#c0c0cb")
+ACTION_BAR_TEXT = ("#f7f7f7", "#1a1a1a")
+COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray38", "#b7b7c5"))
 
 
 def _center_window(win: tk.Toplevel, *, width: Optional[int] = None, height: Optional[int] = None, parent=None):
@@ -113,7 +117,8 @@ ctk.set_default_color_theme("blue")
 
 CUR_L, CUR_R = "“", "”"
 
-RESPONSAVEIS = ["Escritório Externo", "Jurídico Interno", "Solicitante", "Texto livre…"]
+RESP_DEFAULTS = ["Escritório Externo", "Jurídico Interno", "Solicitante"]
+RESP_TEXT_FREE = "Texto livre…"
 SLA_TIPOS   = ["Dias úteis (fixo)", "Dias corridos (fixo)", "D- (antes do Marco)", "D+ (Apos o Marco)"]
 GATILHOS    = [
     "Sempre que inserido novo OBJETO",
@@ -161,6 +166,14 @@ TR = {
         "mem_many": "{n} itens salvos",
         "mem_new_placeholder": "Novo item...",
         "mem_add_button": "Adicionar",
+        "mem_resp_label": "Responsáveis padrão",
+        "mem_resp_import_label": "Importar responsáveis padrão",
+        "mem_resp_hint": "Cole responsáveis (um por linha) e clique em Importar para adicioná-los.",
+        "mem_resp_new_placeholder": "Novo responsável...",
+        "mem_resp_add_button": "Adicionar responsável",
+        "mem_resp_none": "Nenhum responsável salvo ainda",
+        "mem_resp_one": "1 responsável salvo",
+        "mem_resp_many": "{n} responsáveis salvos",
     },
     "es": {
         "when_new_object": "Siempre que se inserte un nuevo {obj}",
@@ -197,6 +210,14 @@ TR = {
         "mem_many": "{n} ítems guardados",
         "mem_new_placeholder": "Nuevo ítem...",
         "mem_add_button": "Agregar",
+        "mem_resp_label": "Responsables predeterminados",
+        "mem_resp_import_label": "Importar responsables predeterminados",
+        "mem_resp_hint": "Pega responsables (uno por línea) y haz clic en Importar para agregarlos.",
+        "mem_resp_new_placeholder": "Nuevo responsable...",
+        "mem_resp_add_button": "Agregar responsable",
+        "mem_resp_none": "Ningún responsable guardado todavía",
+        "mem_resp_one": "1 responsable guardado",
+        "mem_resp_many": "{n} responsables guardados",
     },
 }
 
@@ -372,12 +393,42 @@ class IntSpin(ctk.CTkFrame):
         self._notify()
 
 class MemManagerTab(ctk.CTkFrame):
-    def __init__(self, master, title: str, mem_list: list, refresh_cb):
+    def __init__(
+        self,
+        master,
+        title: str,
+        mem_list: list,
+        refresh_cb,
+        *,
+        hint_text: Optional[str] = None,
+        import_label: Optional[str] = None,
+        list_label: Optional[str] = None,
+        placeholder: Optional[str] = None,
+        add_button_text: Optional[str] = None,
+        count_labels: Optional[dict] = None,
+        forbidden_values: Optional[list[str]] = None,
+    ):
         super().__init__(master, fg_color="transparent")
         self.app = master.winfo_toplevel()
         self.mem_list = mem_list
         self.refresh_cb = refresh_cb
-        
+        self.count_labels = count_labels or {
+            "none": _t("mem_none"),
+            "one": _t("mem_one"),
+            "many": _t("mem_many"),
+        }
+        self.forbidden = {
+            self._norm(v).lower()
+            for v in (forbidden_values or [])
+            if self._norm(v)
+        }
+
+        hint_text = hint_text or _t("mem_hint")
+        import_label = import_label or _t("mem_import_label")
+        list_label = list_label or _t("mem_saved_label")
+        placeholder = placeholder or _t("mem_new_placeholder")
+        add_button_text = add_button_text or _t("mem_add_button")
+
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
 
@@ -408,9 +459,9 @@ class MemManagerTab(ctk.CTkFrame):
 
         ctk.CTkLabel(
             header,
-            text=_t("mem_hint"),
+            text=hint_text,
             justify="left",
-            wraplength=420,
+            wraplength=480,
         ).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(6, 10))
 
         import_card = ctk.CTkFrame(
@@ -425,7 +476,7 @@ class MemManagerTab(ctk.CTkFrame):
 
         ctk.CTkLabel(
             import_card,
-            text=_t("mem_import_label"),
+            text=import_label,
             font=ctk.CTkFont(size=13, weight="bold")
         ).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
 
@@ -452,7 +503,7 @@ class MemManagerTab(ctk.CTkFrame):
 
         ctk.CTkLabel(
             list_card,
-            text=_t("mem_saved_label"),
+            text=list_label,
             font=ctk.CTkFont(size=13, weight="bold")
         ).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
 
@@ -473,16 +524,22 @@ class MemManagerTab(ctk.CTkFrame):
         footer.grid(row=2, column=0, sticky="ew", padx=12, pady=(6, 12))
         footer.grid_columnconfigure(0, weight=1)
 
-        self.new_entry = ctk.CTkEntry(footer, placeholder_text=_t("mem_new_placeholder"))
+        self.new_entry = ctk.CTkEntry(footer, placeholder_text=placeholder)
         self.new_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.new_entry.bind("<Return>", self._add_item)
 
-        self.add_btn = ctk.CTkButton(footer, text=_t("mem_add_button"), width=120, command=self._add_item)
+        self.add_btn = ctk.CTkButton(footer, text=add_button_text, width=120, command=self._add_item)
         self.add_btn.grid(row=0, column=1, sticky="e")
         self._rebuild_list()
 
     def _norm(self, s: str) -> str:
         return " ".join((s or "").split()).strip()
+
+    def _is_allowed(self, value: str) -> bool:
+        norm = self._norm(value)
+        if not norm:
+            return False
+        return norm.lower() not in self.forbidden
 
     def _rebuild_list(self):
         for row in self.rows:
@@ -493,11 +550,11 @@ class MemManagerTab(ctk.CTkFrame):
         total = len(self.mem_list)
         try:
             if total == 0:
-                self.count_var.set(_t("mem_none"))
+                self.count_var.set(self.count_labels.get("none", ""))
             elif total == 1:
-                self.count_var.set(_t("mem_one"))
+                self.count_var.set(self.count_labels.get("one", ""))
             else:
-                self.count_var.set(_t("mem_many").format(n=total))
+                self.count_var.set(self.count_labels.get("many", "").format(n=total))
         except Exception:
             pass
 
@@ -534,6 +591,9 @@ class MemManagerTab(ctk.CTkFrame):
         new_val = self._norm(self.new_entry.get())
         if not new_val or len(new_val) < 3:
             return
+        if not self._is_allowed(new_val):
+            messagebox.showwarning("Inválido", "O nome informado não pode ser utilizado.", parent=self.app)
+            return
         if not any(new_val.lower() == x.lower() for x in self.mem_list):
             self.mem_list.append(new_val)
             self._rebuild_list()
@@ -554,6 +614,9 @@ class MemManagerTab(ctk.CTkFrame):
             return
         if old_val == new_val:
             return
+        if not self._is_allowed(new_val):
+            messagebox.showwarning("Inválido", "O nome informado não pode ser utilizado.", parent=self.app)
+            return
         if any(new_val.lower() == x.lower() for x in self.mem_list if x.lower() != old_val.lower()):
             messagebox.showwarning("Duplicado", f"O item '{new_val}' já existe.", parent=self.app)
             return
@@ -568,11 +631,13 @@ class MemManagerTab(ctk.CTkFrame):
         text = self.import_box.get("1.0", "end").strip()
         if not text:
             return
-        
+
         items = [self._norm(line) for line in text.split("\n")]
         added_count = 0
         for item in items:
             if not item or len(item) < 3:
+                continue
+            if not self._is_allowed(item):
                 continue
             if not any(item.lower() == x.lower() for x in self.mem_list):
                 self.mem_list.append(item)
@@ -671,8 +736,28 @@ class LinhaAcao(ctk.CTkFrame):
         self.var_tipo = tk.StringVar(value="Acionar Tarefa")
 
         self.var_tarefa = tk.StringVar()
-        self.var_resp = tk.StringVar(value=(default_resp if default_resp in RESPONSAVEIS else "Texto livre…"))
-        self.var_resp_livre = tk.StringVar(value=(default_resp_free if default_resp not in RESPONSAVEIS else default_resp))
+
+        resp_options = self._resp_options()
+        preset = (default_resp or "").strip()
+        if preset and preset not in resp_options and preset != RESP_TEXT_FREE:
+            try:
+                self._app()._resp_add(preset)
+                resp_options = self._resp_options()
+            except Exception:
+                pass
+
+        if preset and preset in resp_options and preset != RESP_TEXT_FREE:
+            resp_initial = preset
+            resp_free_initial = (default_resp_free or "")
+        elif preset == RESP_TEXT_FREE:
+            resp_initial = RESP_TEXT_FREE
+            resp_free_initial = default_resp_free or ""
+        else:
+            resp_initial = RESP_TEXT_FREE
+            resp_free_initial = default_resp_free or (preset if preset else "")
+
+        self.var_resp = tk.StringVar(value=resp_initial)
+        self.var_resp_livre = tk.StringVar(value=resp_free_initial)
         self.var_sla_tipo = tk.StringVar(value=SLA_TIPOS[0])
         self.var_sla_dias = tk.IntVar(value=2)
         self.var_sla_marco = tk.StringVar(value="Prazo Fatal da Peça")
@@ -690,27 +775,21 @@ class LinhaAcao(ctk.CTkFrame):
 
         self.tipo_bar = ctk.CTkFrame(
             self,
-            fg_color="transparent",
+            fg_color=ACTION_BAR_BG,
+            border_color=ACTION_BAR_BORDER,
+            border_width=1,
+            corner_radius=12,
         )
-        self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=(0, 4), pady=(4, 2))
+        self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=(0, 6), pady=(4, 6))
         self.tipo_bar.grid_columnconfigure(0, weight=0)
         self.tipo_bar.grid_columnconfigure(1, weight=1)
 
-        capsule = ctk.CTkFrame(
-            self.tipo_bar,
-            fg_color=CAPSULE_BG,
-            border_color=CAPSULE_BORDER,
-            border_width=1,
-            corner_radius=16,
-        )
-        capsule.grid(row=0, column=0, sticky="w", padx=(0, 12), pady=(4, 4))
-
         ctk.CTkLabel(
-            capsule,
+            self.tipo_bar,
             text="Tipo de ação",
-            font=ctk.CTkFont(weight="bold", size=13),
-            text_color=CAPSULE_TEXT,
-        ).pack(padx=14, pady=6)
+            font=ctk.CTkFont(weight="semibold", size=13),
+            text_color=ACTION_BAR_TEXT,
+        ).grid(row=0, column=0, sticky="w", padx=(12, 8), pady=8)
 
         self.cbo_tipo = ctk.CTkComboBox(
             self.tipo_bar,
@@ -721,17 +800,19 @@ class LinhaAcao(ctk.CTkFrame):
             ],
             variable=self.var_tipo,
             command=lambda *_: self._refresh(),
+            border_width=1,
+            border_color=COMBO_BORDER,
         )
-        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 10), pady=(4, 4))
+        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=8)
 
         ctk.CTkLabel(
             self.tipo_bar,
             text=_t("action_type_hint"),
             font=ctk.CTkFont(size=11),
             text_color=("gray70", "#2f2f2f"),
-            wraplength=360,
+            wraplength=480,
             justify="left",
-        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=(4, 10), pady=(0, 4))
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 8))
 
         self.frm_dyn = ctk.CTkFrame(self, fg_color="transparent")
         self.frm_dyn.grid(row=1, column=0, columnspan=2, sticky="ew", padx=(4, 4), pady=(0, 4))
@@ -745,19 +826,23 @@ class LinhaAcao(ctk.CTkFrame):
         row_list = getattr(app, self.row_list_key, [])
         frame_parent = self.master
 
+        arrow_row = ctk.CTkFrame(btn_frame, fg_color="transparent")
+        arrow_row.grid(row=0, column=0, sticky="e")
+
         ctk.CTkButton(
-            btn_frame,
+            arrow_row,
             text="↑",
             width=28,
             command=lambda: app._move_row(self, -1, row_list, frame_parent),
-        ).pack(pady=(0, 2))
+        ).grid(row=0, column=0, padx=(0, 4))
         ctk.CTkButton(
-            btn_frame,
+            arrow_row,
             text="↓",
             width=28,
             command=lambda: app._move_row(self, 1, row_list, frame_parent),
-        ).pack(pady=(0, 4))
-        ctk.CTkButton(btn_frame, text="Remover", command=self._remove, width=80).pack()
+        ).grid(row=0, column=1)
+
+        ctk.CTkButton(btn_frame, text="Remover", command=self._remove, width=84).grid(row=1, column=0, sticky="e", pady=(6, 0))
 
         self._refresh()
 
@@ -775,6 +860,22 @@ class LinhaAcao(ctk.CTkFrame):
         try:
             self._app()._mem_register_field_combo(combo)
             self._app()._mem_bind_combo_capture(combo, var_getter, bucket="field")
+        except Exception:
+            pass
+
+    def _resp_options(self):
+        try:
+            return self._app()._resp_get_options()
+        except Exception:
+            base = sorted(RESP_DEFAULTS, key=str.lower)
+            if RESP_TEXT_FREE not in base:
+                base.append(RESP_TEXT_FREE)
+            return base
+
+    def _register_resp_combo(self, combo, var_getter, on_select=None):
+        try:
+            self._app()._resp_register_combo(combo)
+            self._app()._resp_bind_combo_capture(combo, var_getter, on_select=on_select)
         except Exception:
             pass
 
@@ -808,7 +909,13 @@ class LinhaAcao(ctk.CTkFrame):
             row += 1
 
             ctk.CTkLabel(self.frm_dyn, text="Responsável:").grid(row=row, column=0, sticky="e", pady=(2, 2), padx=(0, 6))
-            cb_resp = ctk.CTkComboBox(self.frm_dyn, values=RESPONSAVEIS, variable=self.var_resp)
+            cb_resp = ctk.CTkComboBox(
+                self.frm_dyn,
+                values=self._resp_options(),
+                variable=self.var_resp,
+                border_width=1,
+                border_color=COMBO_BORDER,
+            )
             cb_resp.grid(row=row, column=1, sticky="ew", pady=(2, 2))
             row += 1
 
@@ -820,14 +927,14 @@ class LinhaAcao(ctk.CTkFrame):
             )
 
             def _toggle_resp(*_):
-                if self.var_resp.get() == "Texto livre…":
+                if self.var_resp.get() == RESP_TEXT_FREE:
                     self.entry_resp_livre.grid(row=resp_row, column=1, sticky="ew", pady=(0, 2))
                 else:
                     self.var_resp_livre.set("")
                     self.entry_resp_livre.grid_forget()
                 self.on_change()
 
-            cb_resp.configure(command=_toggle_resp)
+            self._register_resp_combo(cb_resp, lambda: self.var_resp.get(), on_select=_toggle_resp)
             _toggle_resp()
             row = resp_row + 1 if self.entry_resp_livre.winfo_ismapped() else resp_row
 
@@ -959,8 +1066,21 @@ class LinhaAcao(ctk.CTkFrame):
         self.var_tipo.set(tipo); self._refresh()
 
         self.var_tarefa.set(d.get("tarefa", ""))
-        self.var_resp.set(d.get("resp", "Escritório Externo"))
-        self.var_resp_livre.set(d.get("resp_livre", ""))
+
+        resp_value = d.get("resp", RESP_DEFAULTS[0] if RESP_DEFAULTS else RESP_TEXT_FREE)
+        resp_free = d.get("resp_livre", "")
+        try:
+            if resp_value and resp_value not in ("", RESP_TEXT_FREE):
+                self._app()._resp_add(resp_value)
+        except Exception:
+            pass
+
+        if resp_value in self._resp_options():
+            self.var_resp.set(resp_value)
+            self.var_resp_livre.set(resp_free)
+        else:
+            self.var_resp.set(RESP_TEXT_FREE)
+            self.var_resp_livre.set(resp_free or (resp_value if resp_value not in (None, "", RESP_TEXT_FREE) else ""))
         self.var_sla_tipo.set(d.get("sla_tipo", SLA_TIPOS[0])); self._refresh()
         
         try:
@@ -994,7 +1114,7 @@ class LinhaAcao(ctk.CTkFrame):
             if not tarefa:
                 return ""
             resp = self.var_resp.get()
-            if resp == "Texto livre…":
+            if resp == RESP_TEXT_FREE:
                 resp = self.var_resp_livre.get().strip()
             sla = _render_sla(self.var_sla_tipo.get(), int(self.var_sla_dias.get()),
                               self.var_sla_marco.get().strip(), bool(self.var_sla_fer.get()))
@@ -1030,13 +1150,16 @@ class RNBuilder(ctk.CTk):
 
         self._mem_tasks: list[str] = []
         self._mem_fields: list[str] = []
+        self._resp_defaults: list[str] = list(RESP_DEFAULTS)
         self._task_combos: list = []
         self._field_combos: list = []
+        self._resp_combos: list = []
         self._mem_guard = False
-        
+
         self._mem_manager_window = None
 
-        self.var_resp_preset = tk.StringVar(value="Escritório Externo")
+        initial_resp = (self._resp_defaults[0] if self._resp_defaults else RESP_TEXT_FREE)
+        self.var_resp_preset = tk.StringVar(value=initial_resp)
         self.var_resp_preset_free = tk.StringVar()
 
         self._lang_var = tk.StringVar(value=("Português" if get_lang() == "pt" else "Español"))
@@ -1096,6 +1219,32 @@ class RNBuilder(ctk.CTk):
         except Exception:
             pass
 
+    def _resp_get_options(self):
+        seen = set()
+        options: list[str] = []
+        for item in self._resp_defaults:
+            norm = self._norm(item)
+            if not norm:
+                continue
+            key = norm.lower()
+            if key == RESP_TEXT_FREE.lower():
+                continue
+            if key not in seen:
+                seen.add(key)
+                options.append(norm)
+        options.sort(key=str.lower)
+        if RESP_TEXT_FREE not in options:
+            options.append(RESP_TEXT_FREE)
+        return options
+
+    def _resp_register_combo(self, combo):
+        try:
+            if combo not in self._resp_combos:
+                self._resp_combos.append(combo)
+            combo.configure(values=self._resp_get_options())
+        except Exception:
+            pass
+
     def _refresh_task_combos(self):
         if self._mem_guard:
             return
@@ -1121,6 +1270,20 @@ class RNBuilder(ctk.CTk):
                     cb.configure(values=vals)
                 except Exception:
                     self._field_combos.remove(cb)
+        finally:
+            self._mem_guard = False
+
+    def _refresh_resp_combos(self):
+        if self._mem_guard:
+            return
+        self._mem_guard = True
+        try:
+            vals = self._resp_get_options()
+            for cb in list(self._resp_combos):
+                try:
+                    cb.configure(values=vals)
+                except Exception:
+                    self._resp_combos.remove(cb)
         finally:
             self._mem_guard = False
 
@@ -1153,10 +1316,50 @@ class RNBuilder(ctk.CTk):
         except Exception:
             pass
 
+    def _resp_add(self, s: str):
+        v = self._norm(s)
+        if not v or v == RESP_TEXT_FREE:
+            return
+        if any(v.lower() == x.lower() for x in self._resp_defaults):
+            return
+        self._resp_defaults.append(v)
+        self._resp_defaults.sort(key=str.lower)
+        self._refresh_resp_combos()
+
+    def _resp_bind_combo_capture(self, combo, getter, on_select=None):
+        try:
+            entry = combo._entry
+            entry.bind("<FocusOut>", lambda e: self._resp_add(getter()))
+            entry.bind("<Return>",   lambda e: self._resp_add(getter()))
+        except Exception:
+            pass
+
+        def _on_select(_=None):
+            prev_guard = self._mem_guard
+            if not prev_guard:
+                self._mem_guard = True
+            try:
+                if not prev_guard:
+                    self._resp_add(getter())
+            finally:
+                if not prev_guard:
+                    self._mem_guard = False
+            if callable(on_select):
+                on_select()
+
+        try:
+            combo.configure(command=_on_select)
+        except Exception:
+            pass
+
     def _clear_memories(self):
-        if messagebox.askyesno("Limpar memórias", "Limpar listas de TAREFAS e CAMPOS deste projeto?"):
-            self._mem_tasks.clear(); self._mem_fields.clear()
-            self._refresh_task_combos(); self._refresh_field_combos()
+        if messagebox.askyesno("Limpar memórias", "Limpar listas de TAREFAS, CAMPOS e RESPONSÁVEIS deste projeto?"):
+            self._mem_tasks.clear()
+            self._mem_fields.clear()
+            self._resp_defaults = list(RESP_DEFAULTS)
+            self._refresh_task_combos()
+            self._refresh_field_combos()
+            self._refresh_resp_combos()
     
     def _open_mem_manager(self):
         try:
@@ -1178,19 +1381,20 @@ class RNBuilder(ctk.CTk):
         top.protocol("WM_DELETE_WINDOW", _on_close)
 
         tab_view = ctk.CTkTabview(top)
-        tab_view.pack(expand=True, fill="both", padx=10, pady=10)
+        tab_view.pack(expand=True, fill="both", padx=16, pady=16)
 
         tab_tasks = tab_view.add("Tarefas")
         tab_fields = tab_view.add("Campos")
-        
+        tab_resps = tab_view.add("Responsáveis")
+
         mgr_tasks = MemManagerTab(
-            tab_tasks, 
-            title="Gerenciar Tarefas", 
-            mem_list=self._mem_tasks, 
+            tab_tasks,
+            title="Gerenciar Tarefas",
+            mem_list=self._mem_tasks,
             refresh_cb=self._refresh_task_combos
         )
         mgr_tasks.pack(expand=True, fill="both")
-        
+
         mgr_fields = MemManagerTab(
             tab_fields,
             title="Gerenciar Campos",
@@ -1199,7 +1403,26 @@ class RNBuilder(ctk.CTk):
         )
         mgr_fields.pack(expand=True, fill="both")
 
-        _center_window(top, width=540, height=640, parent=self)
+        mgr_resps = MemManagerTab(
+            tab_resps,
+            title="Gerenciar Responsáveis padrão",
+            mem_list=self._resp_defaults,
+            refresh_cb=self._refresh_resp_combos,
+            hint_text=_t("mem_resp_hint"),
+            import_label=_t("mem_resp_import_label"),
+            list_label=_t("mem_resp_label"),
+            placeholder=_t("mem_resp_new_placeholder"),
+            add_button_text=_t("mem_resp_add_button"),
+            count_labels={
+                "none": _t("mem_resp_none"),
+                "one": _t("mem_resp_one"),
+                "many": _t("mem_resp_many"),
+            },
+            forbidden_values=[RESP_TEXT_FREE],
+        )
+        mgr_resps.pack(expand=True, fill="both")
+
+        _center_window(top, width=960, height=540, parent=self)
 
     def _build_header(self):
         header = ctk.CTkFrame(self, fg_color="transparent")
@@ -1258,9 +1481,11 @@ class RNBuilder(ctk.CTk):
 
         cb = ctk.CTkComboBox(
             resp_frame,
-            values=RESPONSAVEIS,
+            values=self._resp_get_options(),
             variable=self.var_resp_preset,
             width=220,
+            border_width=1,
+            border_color=COMBO_BORDER,
         )
         cb.pack(side="left", padx=(6, 0))
 
@@ -1269,7 +1494,7 @@ class RNBuilder(ctk.CTk):
         )
 
         def _toggle_preset_free(*_):
-            if self.var_resp_preset.get() == "Texto livre…":
+            if self.var_resp_preset.get() == RESP_TEXT_FREE:
                 self.entry_resp_preset_free.pack(side="left", padx=(6, 0))
             else:
                 self.var_resp_preset_free.set("")
@@ -1278,7 +1503,8 @@ class RNBuilder(ctk.CTk):
                 except Exception:
                     pass
 
-        cb.configure(command=_toggle_preset_free)
+        self._resp_register_combo(cb)
+        self._resp_bind_combo_capture(cb, lambda: self.var_resp_preset.get(), on_select=_toggle_preset_free)
         _toggle_preset_free()
 
     def _on_change_lang(self, _choice: str):
@@ -1374,7 +1600,9 @@ class RNBuilder(ctk.CTk):
 
     def _clear_header(self):
         self.start_idx.set(1)
-        self.var_resp_preset.set("Escritório Externo")
+        options = self._resp_get_options()
+        default_resp = next((opt for opt in options if opt != RESP_TEXT_FREE), RESP_TEXT_FREE)
+        self.var_resp_preset.set(default_resp)
         self.var_resp_preset_free.set("")
         try:
             self.entry_resp_preset_free.pack_forget()
@@ -1394,10 +1622,12 @@ class RNBuilder(ctk.CTk):
             pass
 
     def _reset_all(self):
+        self._resp_defaults = list(RESP_DEFAULTS)
+        self._refresh_resp_combos()
         self._clear_header()
         self._mem_tasks.clear(); self._mem_fields.clear()
         self._refresh_task_combos(); self._refresh_field_combos()
-        
+
         self._clear_builder()
         
         try:
@@ -1424,7 +1654,11 @@ class RNBuilder(ctk.CTk):
                 "resp_preset_free": self.var_resp_preset_free.get(),
             },
             "builder": {},
-            "memory": {"tarefas": list(self._mem_tasks), "campos": list(self._mem_fields)},
+            "memory": {
+                "tarefas": list(self._mem_tasks),
+                "campos": list(self._mem_fields),
+                "responsaveis": list(self._resp_defaults),
+            },
             "rns": list(self.rns),
         }
         try:
@@ -1442,9 +1676,9 @@ class RNBuilder(ctk.CTk):
 
             header = proj.get("header", {})
             self.start_idx.set(int(header.get("start_idx", 1)))
-            self.var_resp_preset.set(header.get("resp_preset", "Escritório Externo"))
+            self.var_resp_preset.set(header.get("resp_preset", RESP_DEFAULTS[0] if RESP_DEFAULTS else RESP_TEXT_FREE))
             self.var_resp_preset_free.set(header.get("resp_preset_free", ""))
-            if self.var_resp_preset.get() == "Texto livre…":
+            if self.var_resp_preset.get() == RESP_TEXT_FREE:
                 self.entry_resp_preset_free.pack(side="left", padx=(6, 0))
             else:
                 try:
@@ -1455,7 +1689,15 @@ class RNBuilder(ctk.CTk):
             mem = proj.get("memory", {})
             self._mem_tasks = list(mem.get("tarefas", []))
             self._mem_fields = list(mem.get("campos", []))
-            self._refresh_task_combos(); self._refresh_field_combos()
+            resp_list = mem.get("responsaveis", RESP_DEFAULTS)
+            self._resp_defaults = list(resp_list) if resp_list else list(RESP_DEFAULTS)
+            self._refresh_task_combos(); self._refresh_field_combos(); self._refresh_resp_combos()
+
+            preset_value = self.var_resp_preset.get()
+            if preset_value and preset_value not in self._resp_get_options() and preset_value != RESP_TEXT_FREE:
+                self._resp_add(preset_value)
+            elif preset_value == RESP_TEXT_FREE and not self.var_resp_preset_free.get():
+                self.var_resp_preset_free.set("")
 
             try:
                 if hasattr(self, "_apply_builder_from"):
@@ -1840,7 +2082,7 @@ def _attach_builder_to_RNBuilder():
         self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 1.0)
 
     def _add_acao(self: 'RNBuilder'):
-        preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == "Texto livre…"
+        preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == RESP_TEXT_FREE
                         else self.var_resp_preset.get())
         def _on_remove(row):
             if row in self.acao_rows:
@@ -1851,7 +2093,7 @@ def _attach_builder_to_RNBuilder():
         row = LinhaAcao(self.frm_acoes_body, on_change=self._update_preview,
                         on_remove=_on_remove,
                         default_resp=preset_value,
-                        default_resp_free=(self.var_resp_preset_free.get() if self.var_resp_preset.get() == "Texto livre…" else ""),
+                        default_resp_free=(self.var_resp_preset_free.get() if self.var_resp_preset.get() == RESP_TEXT_FREE else ""),
                         row_list_key="acao_rows")
         self.acao_rows.append(row)
         self._relayout_acao_rows()
@@ -1863,7 +2105,7 @@ def _attach_builder_to_RNBuilder():
             nome = (self.var_freq.get() or '').strip()
             if not nome:
                 return
-            preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == "Texto livre…"
+            preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == RESP_TEXT_FREE
                             else self.var_resp_preset.get())
             def _remove(row):
                 if row in self.acao_rows:
@@ -1873,8 +2115,8 @@ def _attach_builder_to_RNBuilder():
 
             row = LinhaAcao(self.frm_acoes_body, on_change=self._update_preview,
                             on_remove=_remove,
-                            default_resp=preset_value, 
-                            default_resp_free=(self.var_resp_preset_free.get() if self.var_resp_preset.get() == "Texto livre…" else ""),
+                            default_resp=preset_value,
+                            default_resp_free=(self.var_resp_preset_free.get() if self.var_resp_preset.get() == RESP_TEXT_FREE else ""),
                             row_list_key="acao_rows")
             row.var_tipo.set("Acionar Fluxo"); row._refresh(); row.var_fluxo.set(nome)
             self.acao_rows.append(row)
@@ -1891,7 +2133,7 @@ def _attach_builder_to_RNBuilder():
             if not tarefa:
                 return
             self._mem_add_task(tarefa)
-            preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == "Texto livre…"
+            preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == RESP_TEXT_FREE
                             else self.var_resp_preset.get())
             def _remove(row):
                 if row in self.acao_rows:
@@ -1901,8 +2143,8 @@ def _attach_builder_to_RNBuilder():
 
             row = LinhaAcao(self.frm_acoes_body, on_change=self._update_preview,
                             on_remove=_remove,
-                            default_resp=preset_value, 
-                            default_resp_free=(self.var_resp_preset_free.get() if self.var_resp_preset.get() == "Texto livre…" else ""),
+                            default_resp=preset_value,
+                            default_resp_free=(self.var_resp_preset_free.get() if self.var_resp_preset.get() == RESP_TEXT_FREE else ""),
                             row_list_key="acao_rows")
             row.var_tipo.set("Retornar a Tarefa"); row._refresh()
             row.var_ret_tarefa.set(tarefa)
@@ -1945,7 +2187,7 @@ def _attach_builder_to_RNBuilder():
 
     def _insert_frequent_close(self: 'RNBuilder', *, parcial: bool):
         try:
-            preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == "Texto livre…"
+            preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == RESP_TEXT_FREE
                             else self.var_resp_preset.get())
             def _remove(row):
                 if row in self.acao_rows:
@@ -1955,8 +2197,8 @@ def _attach_builder_to_RNBuilder():
 
             row = LinhaAcao(self.frm_acoes_body, on_change=self._update_preview,
                             on_remove=_remove,
-                            default_resp=preset_value, 
-                            default_resp_free=(self.var_resp_preset_free.get() if self.var_resp_preset.get() == "Texto livre…" else ""),
+                            default_resp=preset_value,
+                            default_resp_free=(self.var_resp_preset_free.get() if self.var_resp_preset.get() == RESP_TEXT_FREE else ""),
                             row_list_key="acao_rows")
             
             tipo = "Encerrar Fluxo (Parcial)" if parcial else "Encerrar Fluxo (Total)"
