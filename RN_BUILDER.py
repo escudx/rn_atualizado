@@ -1,4 +1,5 @@
 import sys, traceback, os, json
+from typing import Optional
 import tkinter as tk
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
@@ -32,6 +33,63 @@ class SafeCTkTextbox(ctk.CTkTextbox):
     def tag_configure(self, tagName, **kwargs):  # noqa: N802 (Tkinter camelCase)
         cleaned = {k: v for k, v in kwargs.items() if k not in self._FORBIDDEN_TAG_OPTIONS}
         return super().tag_configure(tagName, **cleaned)
+
+
+def _theme_color(widget: str, option: str, fallback):
+    try:
+        value = ctk.ThemeManager.theme[widget][option]
+        if isinstance(value, str):
+            return (value, value)
+        return value
+    except Exception:
+        return fallback
+
+
+CAPSULE_BG = _theme_color("CTkTextbox", "fg_color", ("gray24", "gray80"))
+CAPSULE_BORDER = _theme_color("CTkFrame", "border_color", ("gray32", "gray72"))
+CAPSULE_TEXT = _theme_color("CTkLabel", "text_color", ("white", "#1a1a1a"))
+
+
+def _center_window(win: tk.Toplevel, *, width: Optional[int] = None, height: Optional[int] = None, parent=None):
+    try:
+        if width and height:
+            win.geometry(f"{width}x{height}")
+
+        win.update_idletasks()
+
+        w = width or win.winfo_width()
+        h = height or win.winfo_height()
+        if w <= 1:
+            w = width or win.winfo_reqwidth()
+        if h <= 1:
+            h = height or win.winfo_reqheight()
+
+        if parent is None:
+            try:
+                parent = win.master if win.master else win.winfo_toplevel()
+            except Exception:
+                parent = None
+
+        if parent is not None:
+            try:
+                parent.update_idletasks()
+                px = parent.winfo_rootx()
+                py = parent.winfo_rooty()
+                pw = parent.winfo_width()
+                ph = parent.winfo_height()
+                x = px + max((pw - w) // 2, 0)
+                y = py + max((ph - h) // 2, 0)
+            except Exception:
+                parent = None
+        if parent is None:
+            sw = win.winfo_screenwidth()
+            sh = win.winfo_screenheight()
+            x = max((sw - w) // 2, 0)
+            y = max((sh - h) // 2, 0)
+
+        win.geometry(f"{w}x{h}+{x}+{y}")
+    except Exception:
+        pass
 
 def _show_fatal_error(exc: BaseException):
     tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -93,6 +151,16 @@ TR = {
         "sla_d_plus": "com SLA de {n} {unit} após a {marco}{hol}",
         "and": " e ",
         "or": " ou ",
+        "preview_placeholder": "Use os campos ao lado para montar a RN. Os textos serão exibidos aqui.",
+        "action_type_hint": "Selecione o tipo de ação para mostrar os campos correspondentes.",
+        "mem_hint": "Cole itens (um por linha) e clique em Importar para adicioná-los.",
+        "mem_saved_label": "Itens salvos",
+        "mem_import_label": "Importar vários itens",
+        "mem_none": "Nenhum item salvo ainda",
+        "mem_one": "1 item salvo",
+        "mem_many": "{n} itens salvos",
+        "mem_new_placeholder": "Novo item...",
+        "mem_add_button": "Adicionar",
     },
     "es": {
         "when_new_object": "Siempre que se inserte un nuevo {obj}",
@@ -119,6 +187,16 @@ TR = {
         "sla_d_plus": "con SLA de {n} {unit} después de {marco}{hol}",
         "and": " y ",
         "or": " o ",
+        "preview_placeholder": "Utiliza los campos de la izquierda para construir la RN. El texto aparecerá aquí.",
+        "action_type_hint": "Selecciona el tipo de acción para mostrar los campos correspondientes.",
+        "mem_hint": "Pega los ítems (uno por línea) y haz clic en Importar para agregarlos.",
+        "mem_saved_label": "Ítems guardados",
+        "mem_import_label": "Importar varios ítems",
+        "mem_none": "Ningún ítem guardado todavía",
+        "mem_one": "1 ítem guardado",
+        "mem_many": "{n} ítems guardados",
+        "mem_new_placeholder": "Nuevo ítem...",
+        "mem_add_button": "Agregar",
     },
 }
 
@@ -301,35 +379,105 @@ class MemManagerTab(ctk.CTkFrame):
         self.refresh_cb = refresh_cb
         
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1) 
+        self.grid_rowconfigure(2, weight=1)
 
-        import_frame = ctk.CTkFrame(self)
-        import_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        import_frame.grid_columnconfigure(0, weight=1)
+        header = ctk.CTkFrame(
+            self,
+            corner_radius=12,
+            fg_color=CAPSULE_BG,
+            border_width=1,
+            border_color=CAPSULE_BORDER,
+        )
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        header.grid_columnconfigure(0, weight=1)
+        header.grid_columnconfigure(1, weight=0)
 
-        self.import_box = ctk.CTkTextbox(import_frame, height=100)
-        self.import_box.grid(row=0, column=0, sticky="ew")
+        ctk.CTkLabel(
+            header,
+            text=title,
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).grid(row=0, column=0, sticky="w", padx=12, pady=(10, 0))
 
-        import_btn = ctk.CTkButton(import_frame, text="Importar", width=90, command=self._import_items)
-        import_btn.grid(row=0, column=1, sticky="ne", padx=6, pady=4)
-        
-        self.scroll_frame = ctk.CTkScrollableFrame(self)
-        self.scroll_frame.grid(row=1, column=0, sticky="nsew") 
+        self.count_var = tk.StringVar(value="")
+        ctk.CTkLabel(
+            header,
+            textvariable=self.count_var,
+            font=ctk.CTkFont(size=12),
+            text_color=("gray70", "#2e2e2e")
+        ).grid(row=0, column=1, sticky="e", padx=12, pady=(10, 0))
+
+        ctk.CTkLabel(
+            header,
+            text=_t("mem_hint"),
+            justify="left",
+            wraplength=420,
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(6, 10))
+
+        import_card = ctk.CTkFrame(
+            self,
+            corner_radius=12,
+            fg_color=CAPSULE_BG,
+            border_width=1,
+            border_color=CAPSULE_BORDER,
+        )
+        import_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        import_card.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            import_card,
+            text=_t("mem_import_label"),
+            font=ctk.CTkFont(size=13, weight="bold")
+        ).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
+
+        self.import_box = ctk.CTkTextbox(import_card, height=110)
+        self.import_box.grid(row=1, column=0, sticky="ew", padx=12)
+
+        ctk.CTkButton(
+            import_card,
+            text="Importar",
+            width=120,
+            command=self._import_items
+        ).grid(row=2, column=0, sticky="e", padx=12, pady=(8, 12))
+
+        list_card = ctk.CTkFrame(
+            self,
+            corner_radius=12,
+            fg_color=CAPSULE_BG,
+            border_width=1,
+            border_color=CAPSULE_BORDER,
+        )
+        list_card.grid(row=2, column=0, sticky="nsew")
+        list_card.grid_columnconfigure(0, weight=1)
+        list_card.grid_rowconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            list_card,
+            text=_t("mem_saved_label"),
+            font=ctk.CTkFont(size=13, weight="bold")
+        ).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
+
+        self.scroll_frame = ctk.CTkScrollableFrame(list_card, fg_color="transparent")
+        self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=12)
         self.scroll_frame.grid_columnconfigure(0, weight=1)
         self.body = scrollable_body(self.scroll_frame)
         self.body.grid_columnconfigure(0, weight=1)
-        
+
+        try:
+            self.app._enable_scrollwheel(self.scroll_frame)
+        except Exception:
+            pass
+
         self.rows = []
-        
-        self.btn_frame = ctk.CTkFrame(self)
-        self.btn_frame.grid(row=2, column=0, sticky="ew", pady=(10, 0)) 
-        self.btn_frame.grid_columnconfigure(0, weight=1)
-        
-        self.new_entry = ctk.CTkEntry(self.btn_frame, placeholder_text="Novo item...")
-        self.new_entry.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+
+        footer = ctk.CTkFrame(list_card, fg_color="transparent")
+        footer.grid(row=2, column=0, sticky="ew", padx=12, pady=(6, 12))
+        footer.grid_columnconfigure(0, weight=1)
+
+        self.new_entry = ctk.CTkEntry(footer, placeholder_text=_t("mem_new_placeholder"))
+        self.new_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.new_entry.bind("<Return>", self._add_item)
-        
-        self.add_btn = ctk.CTkButton(self.btn_frame, text="Adicionar", width=100, command=self._add_item)
+
+        self.add_btn = ctk.CTkButton(footer, text=_t("mem_add_button"), width=120, command=self._add_item)
         self.add_btn.grid(row=0, column=1, sticky="e")
         self._rebuild_list()
 
@@ -341,23 +489,44 @@ class MemManagerTab(ctk.CTkFrame):
             row.destroy()
         self.rows.clear()
         self.mem_list.sort(key=str.lower)
-        
+
+        total = len(self.mem_list)
+        try:
+            if total == 0:
+                self.count_var.set(_t("mem_none"))
+            elif total == 1:
+                self.count_var.set(_t("mem_one"))
+            else:
+                self.count_var.set(_t("mem_many").format(n=total))
+        except Exception:
+            pass
+
         for i, item in enumerate(list(self.mem_list)):
-            row = ctk.CTkFrame(self.body)
-            row.grid(row=i, column=0, sticky="ew", pady=(0, 4))
+            row = ctk.CTkFrame(
+                self.body, fg_color=CAPSULE_BG, corner_radius=12, border_width=1, border_color=CAPSULE_BORDER
+            )
+            row.grid(row=i, column=0, sticky="ew", pady=(0, 10))
             row.grid_columnconfigure(0, weight=1)
-            
+
             entry = ctk.CTkEntry(row)
             entry.insert(0, item)
-            entry.grid(row=0, column=0, sticky="ew")
-            
-            save_btn = ctk.CTkButton(row, text="Renomear", width=90, 
-                                     command=lambda e=entry, old=item: self._rename_item(old, e.get()))
-            save_btn.grid(row=0, column=1, sticky="e", padx=(6, 6))
-            
-            del_btn = ctk.CTkButton(row, text="Remover", width=90, 
-                                    command=lambda i_val=item: self._remove_item(i_val))
-            del_btn.grid(row=0, column=2, sticky="e")
+            entry.grid(row=0, column=0, sticky="ew", padx=(12, 6), pady=8)
+
+            btn_holder = ctk.CTkFrame(row, fg_color="transparent")
+            btn_holder.grid(row=0, column=1, sticky="e", padx=(0, 12), pady=8)
+
+            save_btn = ctk.CTkButton(
+                btn_holder, text="Renomear", width=100,
+                command=lambda e=entry, old=item: self._rename_item(old, e.get())
+            )
+            save_btn.pack(side="left", padx=(0, 8))
+
+            del_btn = ctk.CTkButton(
+                btn_holder, text="Remover", width=100,
+                command=lambda i_val=item: self._remove_item(i_val)
+            )
+            del_btn.pack(side="left")
+
             self.rows.append(row)
         self.refresh_cb()
 
@@ -374,7 +543,8 @@ class MemManagerTab(ctk.CTkFrame):
         if messagebox.askyesno("Remover", f"Remover o item '{item_to_remove}'?", parent=self.app):
             try:
                 self.mem_list.remove(item_to_remove)
-            except ValueError: pass
+            except ValueError:
+                pass
             self._rebuild_list()
 
     def _rename_item(self, old_val: str, new_val: str):
@@ -382,14 +552,16 @@ class MemManagerTab(ctk.CTkFrame):
         if not new_val or len(new_val) < 3:
             messagebox.showwarning("Inválido", "O nome não pode estar vazio.", parent=self.app)
             return
-        if old_val == new_val: return
+        if old_val == new_val:
+            return
         if any(new_val.lower() == x.lower() for x in self.mem_list if x.lower() != old_val.lower()):
             messagebox.showwarning("Duplicado", f"O item '{new_val}' já existe.", parent=self.app)
             return
         try:
             idx = self.mem_list.index(old_val)
             self.mem_list[idx] = new_val
-        except ValueError: pass
+        except ValueError:
+            pass
         self._rebuild_list()
 
     def _import_items(self):
@@ -518,18 +690,27 @@ class LinhaAcao(ctk.CTkFrame):
 
         self.tipo_bar = ctk.CTkFrame(
             self,
-            fg_color=("gray24", "gray80"),
-            corner_radius=10,
+            fg_color="transparent",
         )
-        self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=(0, 4), pady=(4, 8))
+        self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=(0, 4), pady=(4, 2))
         self.tipo_bar.grid_columnconfigure(0, weight=0)
         self.tipo_bar.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(
+        capsule = ctk.CTkFrame(
             self.tipo_bar,
+            fg_color=CAPSULE_BG,
+            border_color=CAPSULE_BORDER,
+            border_width=1,
+            corner_radius=16,
+        )
+        capsule.grid(row=0, column=0, sticky="w", padx=(0, 12), pady=(4, 4))
+
+        ctk.CTkLabel(
+            capsule,
             text="Tipo de ação",
-            font=ctk.CTkFont(weight="bold", size=14),
-        ).grid(row=0, column=0, sticky="w", padx=(10, 8), pady=6)
+            font=ctk.CTkFont(weight="bold", size=13),
+            text_color=CAPSULE_TEXT,
+        ).pack(padx=14, pady=6)
 
         self.cbo_tipo = ctk.CTkComboBox(
             self.tipo_bar,
@@ -541,7 +722,16 @@ class LinhaAcao(ctk.CTkFrame):
             variable=self.var_tipo,
             command=lambda *_: self._refresh(),
         )
-        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 10), pady=6)
+        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 10), pady=(4, 4))
+
+        ctk.CTkLabel(
+            self.tipo_bar,
+            text=_t("action_type_hint"),
+            font=ctk.CTkFont(size=11),
+            text_color=("gray70", "#2f2f2f"),
+            wraplength=360,
+            justify="left",
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=(4, 10), pady=(0, 4))
 
         self.frm_dyn = ctk.CTkFrame(self, fg_color="transparent")
         self.frm_dyn.grid(row=1, column=0, columnspan=2, sticky="ew", padx=(4, 4), pady=(0, 4))
@@ -978,7 +1168,6 @@ class RNBuilder(ctk.CTk):
 
         top = ctk.CTkToplevel(self)
         top.title("Gerenciador de Listas")
-        top.geometry("500x620")
         top.transient(self)
         top.grab_set()
         self._mem_manager_window = top
@@ -988,9 +1177,9 @@ class RNBuilder(ctk.CTk):
             top.destroy()
         top.protocol("WM_DELETE_WINDOW", _on_close)
 
-        tab_view = ctk.CTkTabview(top, width=480, height=600)
+        tab_view = ctk.CTkTabview(top)
         tab_view.pack(expand=True, fill="both", padx=10, pady=10)
-        
+
         tab_tasks = tab_view.add("Tarefas")
         tab_fields = tab_view.add("Campos")
         
@@ -1003,12 +1192,14 @@ class RNBuilder(ctk.CTk):
         mgr_tasks.pack(expand=True, fill="both")
         
         mgr_fields = MemManagerTab(
-            tab_fields, 
-            title="Gerenciar Campos", 
-            mem_list=self._mem_fields, 
+            tab_fields,
+            title="Gerenciar Campos",
+            mem_list=self._mem_fields,
             refresh_cb=self._refresh_field_combos
         )
         mgr_fields.pack(expand=True, fill="both")
+
+        _center_window(top, width=540, height=640, parent=self)
 
     def _build_header(self):
         header = ctk.CTkFrame(self, fg_color="transparent")
@@ -1354,12 +1545,12 @@ def _attach_builder_to_RNBuilder():
             command=lambda *_: self._refresh_gatilho_fields(),
         ).grid(row=0, column=1, sticky="ew", padx=(6, 0))
 
-        self.var_obj = tk.StringVar(value="Cadastro ou Pré Cadastro")
-        self.var_tarefa_ctx = tk.StringVar(value="Validar Nota Fiscal")
-        self.var_campo = tk.StringVar(value="Nota aprovada?")
-        self.var_resposta = tk.StringVar(value="Não")
-        self.var_tarefa_done = tk.StringVar(value="Realizar Protocolo da Peça e Anexar Comprovante")
-        self.var_evento = tk.StringVar(value="Prazo Fatal da Peça atingido")
+        self.var_obj = tk.StringVar(value="")
+        self.var_tarefa_ctx = tk.StringVar(value="")
+        self.var_campo = tk.StringVar(value="")
+        self.var_resposta = tk.StringVar(value="")
+        self.var_tarefa_done = tk.StringVar(value="")
+        self.var_evento = tk.StringVar(value="")
 
         self.frm_gatilho = ctk.CTkFrame(frm_gatilho_group, fg_color="transparent")
         self.frm_gatilho.grid(row=1, column=0, sticky="nsew", padx=6, pady=(0, 6))
@@ -1572,12 +1763,12 @@ def _attach_builder_to_RNBuilder():
 
     def _reset_builder_defaults(self: 'RNBuilder'):
         self.var_gatilho_tipo.set(GATILHOS[1])
-        self.var_obj.set("Cadastro ou Pré Cadastro")
-        self.var_tarefa_ctx.set("Validar Nota Fiscal")
-        self.var_campo.set("Nota aprovada?")
-        self.var_resposta.set("Não")
-        self.var_tarefa_done.set("Realizar Protocolo da Peça e Anexar Comprovante")
-        self.var_evento.set("Prazo Fatal da Peça atingido")
+        self.var_obj.set("")
+        self.var_tarefa_ctx.set("")
+        self.var_campo.set("")
+        self.var_resposta.set("")
+        self.var_tarefa_done.set("")
+        self.var_evento.set("")
         self._refresh_gatilho_fields()
 
     def _destroy_rows(self: 'RNBuilder', rows):
@@ -1846,21 +2037,35 @@ def _attach_builder_to_RNBuilder():
     def _when_text(self: 'RNBuilder') -> str:
         lang = get_lang()
         t = self.var_gatilho_tipo.get()
-        
+
         if t == GATILHOS[0]:
-            return _t("when_new_object").format(obj=f"{CUR_L}{self.var_obj.get().strip()}{CUR_R}")
-        
+            obj = self.var_obj.get().strip()
+            if not obj:
+                return ""
+            return _t("when_new_object").format(obj=f"{CUR_L}{obj}{CUR_R}")
+
         if t == GATILHOS[1]:
+            task = self.var_tarefa_ctx.get().strip()
+            field = self.var_campo.get().strip()
+            answer = self.var_resposta.get().strip()
+            if not (task and field and answer):
+                return ""
             return _t("when_task_field_answer").format(
-                task=f"{CUR_L}{self.var_tarefa_ctx.get().strip()}{CUR_R}",
-                field=f"{CUR_L}{self.var_campo.get().strip()}{CUR_R}",
-                answer=f"{CUR_L}{self.var_resposta.get().strip()}{CUR_R}"
+                task=f"{CUR_L}{task}{CUR_R}",
+                field=f"{CUR_L}{field}{CUR_R}",
+                answer=f"{CUR_L}{answer}{CUR_R}"
             )
-            
+
         if t == GATILHOS[2]:
-            return _t("when_task_done").format(task=f"{CUR_L}{self.var_tarefa_done.get().strip()}{CUR_R}")
-            
-        return _t("when_after_event").format(event=f"{CUR_L}{self.var_evento.get().strip()}{CUR_R}")
+            done = self.var_tarefa_done.get().strip()
+            if not done:
+                return ""
+            return _t("when_task_done").format(task=f"{CUR_L}{done}{CUR_R}")
+
+        event = self.var_evento.get().strip()
+        if not event:
+            return ""
+        return _t("when_after_event").format(event=f"{CUR_L}{event}{CUR_R}")
 
     def _cond_text(self: 'RNBuilder') -> str:
         texts = [r.to_text() for r in getattr(self, 'cond_rows', [])]
@@ -2096,7 +2301,6 @@ def _attach_panels_to_RNBuilder():
             return
         top = ctk.CTkToplevel(self)
         top.title(f"Editar RN #{idx + 1}")
-        top.geometry("740x420")
         top.transient(self)
         top.lift()
         try:
@@ -2121,6 +2325,8 @@ def _attach_panels_to_RNBuilder():
 
         ctk.CTkButton(btnbar, text="Salvar", command=_save, width=120).pack(side="right")
         ctk.CTkButton(btnbar, text="Cancelar", command=top.destroy, width=120).pack(side="right", padx=(0, 8))
+
+        _center_window(top, width=760, height=440, parent=self)
 
     def _delete_rn(self: 'RNBuilder', idx: int):
         if not (0 <= idx < len(self.rns)):
@@ -2149,11 +2355,11 @@ def _attach_panels_to_RNBuilder():
 
             if preview:
                 preview += "."
+                final_txt = preview
+            else:
+                final_txt = _t("preview_placeholder")
 
-            if not preview:
-                preview = ""
-
-            self.prev_box.insert("end", preview)
+            self.prev_box.insert("end", final_txt)
 
         except Exception as e:
             try:
