@@ -4,6 +4,24 @@ from tkinter import messagebox, filedialog
 import customtkinter as ctk
 
 
+def _enable_dpi_awareness():
+    """Melhora a compatibilidade com múltiplos monitores no Windows."""
+    if not sys.platform.startswith("win"):
+        return
+    try:
+        import ctypes
+
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except AttributeError:
+            ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
+
+_enable_dpi_awareness()
+
+
 class SafeCTkTextbox(ctk.CTkTextbox):
     _FORBIDDEN_TAG_OPTIONS = {"font", "ctk_font"}
 
@@ -498,10 +516,23 @@ class LinhaAcao(ctk.CTkFrame):
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=0)
 
-        ctk.CTkLabel(self, text="Tipo de ação:", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, sticky="e", padx=(4, 6), pady=(4, 2))
-        
-        ctk.CTkComboBox(
+        self.tipo_bar = ctk.CTkFrame(
             self,
+            fg_color=("gray24", "gray80"),
+            corner_radius=10,
+        )
+        self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=(0, 4), pady=(4, 8))
+        self.tipo_bar.grid_columnconfigure(0, weight=0)
+        self.tipo_bar.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(
+            self.tipo_bar,
+            text="Tipo de ação",
+            font=ctk.CTkFont(weight="bold", size=14),
+        ).grid(row=0, column=0, sticky="w", padx=(10, 8), pady=6)
+
+        self.cbo_tipo = ctk.CTkComboBox(
+            self.tipo_bar,
             values=[
                 "Acionar Tarefa",
                 "Atualizar Status",
@@ -509,7 +540,8 @@ class LinhaAcao(ctk.CTkFrame):
             ],
             variable=self.var_tipo,
             command=lambda *_: self._refresh(),
-        ).grid(row=0, column=1, sticky="ew", padx=(0, 4), pady=(4, 2))
+        )
+        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 10), pady=6)
 
         self.frm_dyn = ctk.CTkFrame(self, fg_color="transparent")
         self.frm_dyn.grid(row=1, column=0, columnspan=2, sticky="ew", padx=(4, 4), pady=(0, 4))
@@ -798,8 +830,7 @@ class RNBuilder(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("RN Builder — Montador de Regras")
-        self.geometry("1280x860")
-        self.minsize(1120, 800)
+        self._apply_initial_geometry()
         self.grid_rowconfigure(0, weight=0)
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -1102,6 +1133,51 @@ class RNBuilder(ctk.CTk):
         except Exception:
             pass
 
+    def _apply_initial_geometry(self):
+        def _clamp(value: int, minimum: int, maximum: int) -> int:
+            return max(minimum, min(value, maximum))
+
+        self.update_idletasks()
+        screen_w = max(self.winfo_screenwidth(), 1)
+        screen_h = max(self.winfo_screenheight(), 1)
+
+        margin_w = 40 if screen_w > 40 else 0
+        margin_h = 80 if screen_h > 80 else 0
+
+        width = _clamp(int(screen_w * 0.85), int(screen_w * 0.6), screen_w - margin_w)
+        height = _clamp(int(screen_h * 0.85), int(screen_h * 0.6), screen_h - margin_h)
+
+        x = max((screen_w - width) // 2, 0)
+        y = max((screen_h - height) // 2, 0)
+
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
+        min_w = min(width, max(int(screen_w * 0.55), 880))
+        min_h = min(height, max(int(screen_h * 0.55), 640))
+        self.minsize(min_w, min_h)
+
+        try:
+            self.attributes("-alpha", 1.0)
+        except Exception:
+            pass
+
+    def _enable_scrollwheel(self, scrollable: ctk.CTkScrollableFrame):
+        canvas = getattr(scrollable, "_parent_canvas", None)
+        if canvas is None:
+            return
+
+        def _on_mousewheel(event):
+            delta = getattr(event, "delta", 0)
+            if delta == 0 and getattr(event, "num", None) in (4, 5):
+                delta = 120 if event.num == 4 else -120
+            step = -1 if delta > 0 else 1
+            canvas.yview_scroll(step, "units")
+            return "break"
+
+        canvas.bind("<MouseWheel>", _on_mousewheel, add=True)
+        canvas.bind("<Button-4>", _on_mousewheel, add=True)
+        canvas.bind("<Button-5>", _on_mousewheel, add=True)
+
     def _show_about(self):
         messagebox.showinfo("Sobre", "Criado por Rodrigo Salvador Escudero")
 
@@ -1249,6 +1325,7 @@ def _attach_builder_to_RNBuilder():
         self.builder_scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
         self.builder_scroll.grid(row=0, column=0, sticky="nsew", padx=(10, 6), pady=6)
         self.builder_scroll.grid_columnconfigure(0, weight=1)
+        self._enable_scrollwheel(self.builder_scroll)
 
         self.builder_container = scrollable_body(self.builder_scroll)
         self.builder_container.grid_columnconfigure(0, weight=1)
@@ -1869,7 +1946,7 @@ def _attach_panels_to_RNBuilder():
                       command=self._add_rn_and_prepare_opposite, width=300).pack(side="left", padx=(0, 6))
         ctk.CTkButton(left_btnbar, text="Limpar pré-visualização", command=self._clear_preview, width=200).pack(side="left")
 
-        self.prev_box = SafeCTkTextbox(preview_group, height=200)
+        self.prev_box = SafeCTkTextbox(preview_group)
         self.prev_box.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
 
         try:
@@ -1884,8 +1961,8 @@ def _attach_panels_to_RNBuilder():
         )
         self.rn_collapsible.grid(row=1, column=0, padx=(0,0), pady=(0,0), sticky="nsew")
         rn_group = self.rn_collapsible.get_inner_frame()
-        rn_group.grid_rowconfigure(1, weight=1)
-        rn_group.grid_rowconfigure(2, weight=1)
+        rn_group.grid_rowconfigure(1, weight=2)
+        rn_group.grid_rowconfigure(2, weight=3)
         rn_group.grid_columnconfigure(0, weight=1)
 
         right_btnbar = ctk.CTkFrame(rn_group, fg_color="transparent")
@@ -1895,11 +1972,12 @@ def _attach_panels_to_RNBuilder():
         ctk.CTkButton(right_btnbar, text="Salvar .txt", command=self._save_txt, width=110).pack(side="left", padx=(0, 6))
         ctk.CTkButton(right_btnbar, text="Limpar RNs", command=lambda: self._clear_rns(confirm=True), width=110).pack(side="left")
 
-        self.rn_mgr = ctk.CTkScrollableFrame(rn_group, height=220)
+        self.rn_mgr = ctk.CTkScrollableFrame(rn_group)
         self.rn_mgr.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, 6))
         self.rn_mgr.grid_columnconfigure(0, weight=1)
+        self._enable_scrollwheel(self.rn_mgr)
 
-        self.txt = ctk.CTkTextbox(rn_group, height=200)
+        self.txt = ctk.CTkTextbox(rn_group)
         self.txt.grid(row=2, column=0, sticky="nsew", padx=0, pady=0)
         try:
             self.txt.configure(wrap="word")
@@ -2019,6 +2097,15 @@ def _attach_panels_to_RNBuilder():
         top = ctk.CTkToplevel(self)
         top.title(f"Editar RN #{idx + 1}")
         top.geometry("740x420")
+        top.transient(self)
+        top.lift()
+        try:
+            top.attributes("-topmost", True)
+            top.after(300, lambda: top.attributes("-topmost", False))
+        except Exception:
+            pass
+        top.grab_set()
+        top.focus_force()
         box = ctk.CTkTextbox(top)
         box.pack(expand=True, fill="both", padx=10, pady=10)
         box.insert("1.0", self.rns[idx])
