@@ -787,7 +787,7 @@ class LinhaAcao(ctk.CTkFrame):
         ctk.CTkLabel(
             self.tipo_bar,
             text="Tipo de ação",
-            font=ctk.CTkFont(weight="semibold", size=13),
+            font=ctk.CTkFont(weight="bold", size=13),
             text_color=ACTION_BAR_TEXT,
         ).grid(row=0, column=0, sticky="w", padx=(12, 8), pady=8)
 
