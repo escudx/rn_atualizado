@@ -45,12 +45,37 @@ def _theme_color(widget: str, option: str, fallback):
         return fallback
 
 
+def _mix_hex(color_a: str, color_b: str, factor: float) -> str:
+    try:
+        ca = color_a.lstrip("#")
+        cb = color_b.lstrip("#")
+        if len(ca) != 6 or len(cb) != 6:
+            raise ValueError
+        factor = max(0.0, min(1.0, float(factor)))
+        ra, ga, ba = (int(ca[i : i + 2], 16) for i in (0, 2, 4))
+        rb, gb, bb = (int(cb[i : i + 2], 16) for i in (0, 2, 4))
+        blend = lambda va, vb: int(round(va + (vb - va) * factor))
+        r = blend(ra, rb)
+        g = blend(ga, gb)
+        b = blend(ba, bb)
+        return f"#{r:02x}{g:02x}{b:02x}"
+    except Exception:
+        return color_a
+
+
 CAPSULE_BG = _theme_color("CTkTextbox", "fg_color", ("gray24", "gray80"))
 CAPSULE_BORDER = _theme_color("CTkFrame", "border_color", ("gray32", "gray72"))
 CAPSULE_TEXT = _theme_color("CTkLabel", "text_color", ("white", "#1a1a1a"))
-ACTION_BAR_BG = ("#1f1f28", "#d9d9e3")
-ACTION_BAR_BORDER = ("#2d2d38", "#c0c0cb")
-ACTION_BAR_TEXT = ("#f7f7f7", "#1a1a1a")
+PANEL_BG = _theme_color("CTkFrame", "fg_color", ("#1b1b24", "#f1f1f6"))
+ACTION_BAR_BG = (
+    _mix_hex(PANEL_BG[0], "#ffffff", 0.08),
+    _mix_hex(PANEL_BG[1], "#000000", 0.06),
+)
+ACTION_BAR_BORDER = (
+    _mix_hex(ACTION_BAR_BG[0], "#ffffff", 0.16),
+    _mix_hex(ACTION_BAR_BG[1], "#000000", 0.12),
+)
+ACTION_BAR_TEXT = _theme_color("CTkLabel", "text_color", ("#f5f5f5", "#1a1a1a"))
 COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray38", "#b7b7c5"))
 
 
@@ -407,6 +432,7 @@ class MemManagerTab(ctk.CTkFrame):
         add_button_text: Optional[str] = None,
         count_labels: Optional[dict] = None,
         forbidden_values: Optional[list[str]] = None,
+        layout: str = "vertical",
     ):
         super().__init__(master, fg_color="transparent")
         self.app = master.winfo_toplevel()
@@ -429,8 +455,15 @@ class MemManagerTab(ctk.CTkFrame):
         placeholder = placeholder or _t("mem_new_placeholder")
         add_button_text = add_button_text or _t("mem_add_button")
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        layout = (layout or "vertical").lower()
+        side_by_side = layout in {"horizontal", "side", "two-column", "grid"}
+
+        self.grid_columnconfigure(0, weight=1, uniform="mem")
+        if side_by_side:
+            self.grid_columnconfigure(1, weight=1, uniform="mem")
+            self.grid_rowconfigure(1, weight=1)
+        else:
+            self.grid_rowconfigure(2, weight=1)
 
         header = ctk.CTkFrame(
             self,
@@ -439,7 +472,8 @@ class MemManagerTab(ctk.CTkFrame):
             border_width=1,
             border_color=CAPSULE_BORDER,
         )
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        header_cols = 2 if side_by_side else 1
+        header.grid(row=0, column=0, columnspan=header_cols, sticky="ew", pady=(0, 12))
         header.grid_columnconfigure(0, weight=1)
         header.grid_columnconfigure(1, weight=0)
 
@@ -471,7 +505,11 @@ class MemManagerTab(ctk.CTkFrame):
             border_width=1,
             border_color=CAPSULE_BORDER,
         )
-        import_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        if side_by_side:
+            import_card.grid(row=1, column=0, sticky="nsew", padx=(0, 8), pady=(0, 12))
+            import_card.grid_rowconfigure(1, weight=1)
+        else:
+            import_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
         import_card.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
@@ -480,7 +518,8 @@ class MemManagerTab(ctk.CTkFrame):
             font=ctk.CTkFont(size=13, weight="bold")
         ).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
 
-        self.import_box = ctk.CTkTextbox(import_card, height=110)
+        box_height = 140 if side_by_side else 110
+        self.import_box = ctk.CTkTextbox(import_card, height=box_height)
         self.import_box.grid(row=1, column=0, sticky="ew", padx=12)
 
         ctk.CTkButton(
@@ -497,7 +536,10 @@ class MemManagerTab(ctk.CTkFrame):
             border_width=1,
             border_color=CAPSULE_BORDER,
         )
-        list_card.grid(row=2, column=0, sticky="nsew")
+        if side_by_side:
+            list_card.grid(row=1, column=1, sticky="nsew", padx=(8, 0), pady=(0, 12))
+        else:
+            list_card.grid(row=2, column=0, sticky="nsew")
         list_card.grid_columnconfigure(0, weight=1)
         list_card.grid_rowconfigure(1, weight=1)
 
@@ -778,7 +820,7 @@ class LinhaAcao(ctk.CTkFrame):
             fg_color=ACTION_BAR_BG,
             border_color=ACTION_BAR_BORDER,
             border_width=1,
-            corner_radius=12,
+            corner_radius=10,
         )
         self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=(0, 6), pady=(4, 6))
         self.tipo_bar.grid_columnconfigure(0, weight=0)
@@ -787,9 +829,9 @@ class LinhaAcao(ctk.CTkFrame):
         ctk.CTkLabel(
             self.tipo_bar,
             text="Tipo de ação",
-            font=ctk.CTkFont(weight="bold", size=13),
+            font=ctk.CTkFont(weight="bold", size=12),
             text_color=ACTION_BAR_TEXT,
-        ).grid(row=0, column=0, sticky="w", padx=(12, 8), pady=8)
+        ).grid(row=0, column=0, sticky="w", padx=(12, 8), pady=6)
 
         self.cbo_tipo = ctk.CTkComboBox(
             self.tipo_bar,
@@ -803,7 +845,7 @@ class LinhaAcao(ctk.CTkFrame):
             border_width=1,
             border_color=COMBO_BORDER,
         )
-        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=8)
+        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=6)
 
         ctk.CTkLabel(
             self.tipo_bar,
@@ -1419,6 +1461,7 @@ class RNBuilder(ctk.CTk):
                 "many": _t("mem_resp_many"),
             },
             forbidden_values=[RESP_TEXT_FREE],
+            layout="horizontal",
         )
         mgr_resps.pack(expand=True, fill="both")
 
