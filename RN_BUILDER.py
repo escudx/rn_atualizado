@@ -813,25 +813,25 @@ class LinhaAcao(ctk.CTkFrame):
 
         self.grid_columnconfigure(0, weight=0, minsize=120)
         self.grid_columnconfigure(1, weight=1)
-        self.grid_columnconfigure(2, weight=0)
 
         self.tipo_bar = ctk.CTkFrame(
             self,
             fg_color=ACTION_BAR_BG,
             border_color=ACTION_BAR_BORDER,
             border_width=1,
-            corner_radius=10,
+            corner_radius=8,
         )
-        self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=(0, 6), pady=(4, 6))
+        self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=4, pady=(4, 8))
         self.tipo_bar.grid_columnconfigure(0, weight=0)
         self.tipo_bar.grid_columnconfigure(1, weight=1)
+        self.tipo_bar.grid_columnconfigure(2, weight=0)
 
         ctk.CTkLabel(
             self.tipo_bar,
             text="Tipo de ação",
             font=ctk.CTkFont(weight="bold", size=12),
             text_color=ACTION_BAR_TEXT,
-        ).grid(row=0, column=0, sticky="w", padx=(12, 8), pady=6)
+        ).grid(row=0, column=0, sticky="w", padx=(12, 8), pady=(10, 6))
 
         self.cbo_tipo = ctk.CTkComboBox(
             self.tipo_bar,
@@ -845,31 +845,14 @@ class LinhaAcao(ctk.CTkFrame):
             border_width=1,
             border_color=COMBO_BORDER,
         )
-        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=6)
+        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=(10, 6))
 
-        ctk.CTkLabel(
-            self.tipo_bar,
-            text=_t("action_type_hint"),
-            font=ctk.CTkFont(size=11),
-            text_color=("gray70", "#2f2f2f"),
-            wraplength=480,
-            justify="left",
-        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 8))
-
-        self.frm_dyn = ctk.CTkFrame(self, fg_color="transparent")
-        self.frm_dyn.grid(row=1, column=0, columnspan=2, sticky="ew", padx=(4, 4), pady=(0, 4))
-        self.frm_dyn.grid_columnconfigure(0, weight=0, minsize=110)
-        self.frm_dyn.grid_columnconfigure(1, weight=1)
-
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.grid(row=0, column=2, rowspan=2, sticky="ne", padx=(0, 4), pady=(4, 4))
+        arrow_row = ctk.CTkFrame(self.tipo_bar, fg_color="transparent")
+        arrow_row.grid(row=0, column=2, sticky="e", padx=(0, 12), pady=(10, 6))
 
         app = self.winfo_toplevel()
         row_list = getattr(app, self.row_list_key, [])
         frame_parent = self.master
-
-        arrow_row = ctk.CTkFrame(btn_frame, fg_color="transparent")
-        arrow_row.grid(row=0, column=0, sticky="e")
 
         ctk.CTkButton(
             arrow_row,
@@ -884,7 +867,26 @@ class LinhaAcao(ctk.CTkFrame):
             command=lambda: app._move_row(self, 1, row_list, frame_parent),
         ).grid(row=0, column=1)
 
-        ctk.CTkButton(btn_frame, text="Remover", command=self._remove, width=84).grid(row=1, column=0, sticky="e", pady=(6, 0))
+        ctk.CTkLabel(
+            self.tipo_bar,
+            text=_t("action_type_hint"),
+            font=ctk.CTkFont(size=11),
+            text_color=("gray70", "#2f2f2f"),
+            wraplength=480,
+            justify="left",
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 10))
+
+        ctk.CTkButton(
+            self.tipo_bar,
+            text="Remover",
+            command=self._remove,
+            width=90,
+        ).grid(row=1, column=2, sticky="e", padx=(0, 12), pady=(0, 10))
+
+        self.frm_dyn = ctk.CTkFrame(self, fg_color="transparent")
+        self.frm_dyn.grid(row=1, column=0, columnspan=2, sticky="ew", padx=(4, 4), pady=(0, 4))
+        self.frm_dyn.grid_columnconfigure(0, weight=0, minsize=110)
+        self.frm_dyn.grid_columnconfigure(1, weight=1)
 
         self._refresh()
 
