@@ -75,6 +75,16 @@ ACTION_BAR_BORDER = (
 ACTION_BAR_TEXT = _theme_color("CTkLabel", "text_color", ("#f4f4f4", "#1a1a1a"))
 COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray45", "#b5b5c8"))
 
+# Cartões usados em gerenciadores de listas
+CAPSULE_BG = (
+    _mix_hex(PANEL_BG[0], "#ffffff", 0.04),
+    _mix_hex(PANEL_BG[1], "#000000", 0.05),
+)
+CAPSULE_BORDER = (
+    _mix_hex(CAPSULE_BG[0], "#ffffff", 0.16),
+    _mix_hex(CAPSULE_BG[1], "#000000", 0.14),
+)
+
 
 def _center_window(win: tk.Toplevel, *, width: Optional[int] = None, height: Optional[int] = None, parent=None):
     try:
@@ -1433,7 +1443,8 @@ class RNBuilder(ctk.CTk):
             tab_tasks,
             title="Gerenciar Tarefas",
             mem_list=self._mem_tasks,
-            refresh_cb=self._refresh_task_combos
+            refresh_cb=self._refresh_task_combos,
+            layout="horizontal",
         )
         mgr_tasks.pack(expand=True, fill="both")
 
@@ -1441,7 +1452,8 @@ class RNBuilder(ctk.CTk):
             tab_fields,
             title="Gerenciar Campos",
             mem_list=self._mem_fields,
-            refresh_cb=self._refresh_field_combos
+            refresh_cb=self._refresh_field_combos,
+            layout="horizontal",
         )
         mgr_fields.pack(expand=True, fill="both")
 
