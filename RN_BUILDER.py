@@ -77,24 +77,32 @@ COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray45", "#b5b5c8"))
 
 # Paleta dos gerenciadores de listas
 CARD_BORDER = (
-    _mix_hex(PANEL_BG[0], "#ffffff", 0.16),
-    _mix_hex(PANEL_BG[1], "#000000", 0.14),
+    _mix_hex(PANEL_BG[0], "#ffffff", 0.22),
+    _mix_hex(PANEL_BG[1], "#000000", 0.18),
 )
 IMPORT_CARD_BG = (
-    _mix_hex(PANEL_BG[0], "#ffffff", 0.08),
-    _mix_hex(PANEL_BG[1], "#000000", 0.07),
+    _mix_hex(PANEL_BG[0], "#000000", 0.4),
+    _mix_hex(PANEL_BG[1], "#000000", 0.1),
+)
+IMPORT_BOX_BG = (
+    _mix_hex(IMPORT_CARD_BG[0], "#ffffff", 0.16),
+    _mix_hex(IMPORT_CARD_BG[1], "#ffffff", 0.12),
 )
 LIST_CARD_BG = (
-    _mix_hex(PANEL_BG[0], "#000000", 0.04),
-    _mix_hex(PANEL_BG[1], "#ffffff", 0.04),
+    _mix_hex(PANEL_BG[0], "#000000", 0.32),
+    _mix_hex(PANEL_BG[1], "#000000", 0.08),
 )
 ROW_BG = (
-    _mix_hex(LIST_CARD_BG[0], "#ffffff", 0.1),
-    _mix_hex(LIST_CARD_BG[1], "#000000", 0.08),
+    _mix_hex(LIST_CARD_BG[0], "#ffffff", 0.22),
+    _mix_hex(LIST_CARD_BG[1], "#ffffff", 0.14),
+)
+LIST_FOOTER_BG = (
+    _mix_hex(LIST_CARD_BG[0], "#ffffff", 0.12),
+    _mix_hex(LIST_CARD_BG[1], "#ffffff", 0.08),
 )
 BADGE_BG = (
-    _mix_hex(IMPORT_CARD_BG[0], "#ffffff", 0.32),
-    _mix_hex(IMPORT_CARD_BG[1], "#000000", 0.12),
+    _mix_hex(IMPORT_CARD_BG[0], "#ffffff", 0.28),
+    _mix_hex(IMPORT_CARD_BG[1], "#ffffff", 0.18),
 )
 BADGE_TEXT = ACTION_BAR_TEXT
 HINT_TEXT = (
@@ -529,15 +537,15 @@ class MemManagerTab(ctk.CTkFrame):
 
         import_card = ctk.CTkFrame(
             self,
-            corner_radius=12,
+            corner_radius=14,
             fg_color=IMPORT_CARD_BG,
             border_width=1,
             border_color=CARD_BORDER,
         )
         if side_by_side:
-            import_card.grid(row=1, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
+            import_card.grid(row=1, column=0, sticky="nsew", padx=(4, 12), pady=(0, 12))
         else:
-            import_card.grid(row=1, column=0, sticky="nsew", pady=(0, 12))
+            import_card.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 12))
         import_card.grid_columnconfigure(0, weight=1)
         import_card.grid_rowconfigure(1, weight=1)
 
@@ -545,7 +553,7 @@ class MemManagerTab(ctk.CTkFrame):
             import_card,
             text=import_label,
             font=ctk.CTkFont(size=14, weight="bold"),
-        ).grid(row=0, column=0, sticky="w", padx=16, pady=(16, 6))
+        ).grid(row=0, column=0, sticky="w", padx=18, pady=(18, 6))
 
         box_height = 160 if side_by_side else 120
         self.import_box = ctk.CTkTextbox(
@@ -554,9 +562,9 @@ class MemManagerTab(ctk.CTkFrame):
             corner_radius=10,
             border_width=1,
             border_color=CARD_BORDER,
-            fg_color=ROW_BG,
+            fg_color=IMPORT_BOX_BG,
         )
-        self.import_box.grid(row=1, column=0, sticky="nsew", padx=16, pady=(0, 12))
+        self.import_box.grid(row=1, column=0, sticky="nsew", padx=18, pady=(0, 12))
         self.import_box.configure(font=ctk.CTkFont(size=12))
 
         import_hint = hint_text if side_by_side else ""
@@ -567,7 +575,7 @@ class MemManagerTab(ctk.CTkFrame):
                 justify="left",
                 wraplength=320,
                 text_color=HINT_TEXT,
-            ).grid(row=2, column=0, sticky="w", padx=16, pady=(0, 8))
+            ).grid(row=2, column=0, sticky="w", padx=18, pady=(0, 8))
 
         btn_row = 3 if import_hint else 2
 
@@ -579,19 +587,19 @@ class MemManagerTab(ctk.CTkFrame):
             corner_radius=8,
             fg_color=PRIMARY_BTN,
             hover_color=PRIMARY_HOVER,
-        ).grid(row=btn_row, column=0, sticky="e", padx=16, pady=(4, 16))
+        ).grid(row=btn_row, column=0, sticky="e", padx=18, pady=(4, 18))
 
         list_card = ctk.CTkFrame(
             self,
-            corner_radius=12,
+            corner_radius=14,
             fg_color=LIST_CARD_BG,
             border_width=1,
             border_color=CARD_BORDER,
         )
         if side_by_side:
-            list_card.grid(row=1, column=1, sticky="nsew", padx=(12, 0), pady=(0, 12))
+            list_card.grid(row=1, column=1, sticky="nsew", padx=(12, 4), pady=(0, 12))
         else:
-            list_card.grid(row=2, column=0, sticky="nsew")
+            list_card.grid(row=2, column=0, sticky="nsew", padx=4)
         list_card.grid_columnconfigure(0, weight=1)
         list_card.grid_rowconfigure(1, weight=1)
 
@@ -599,12 +607,16 @@ class MemManagerTab(ctk.CTkFrame):
             list_card,
             text=list_label,
             font=ctk.CTkFont(size=14, weight="bold"),
-        ).grid(row=0, column=0, sticky="w", padx=24, pady=(12, 6))
+        ).grid(row=0, column=0, sticky="w", padx=24, pady=(16, 6))
 
-        self.scroll_frame = ctk.CTkScrollableFrame(list_card, fg_color="transparent")
-        self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=16, pady=(0, 12))
+        self.scroll_frame = ctk.CTkScrollableFrame(list_card, fg_color=LIST_CARD_BG)
+        self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 12))
         self.scroll_frame.grid_columnconfigure(0, weight=1)
         self.body = scrollable_body(self.scroll_frame)
+        try:
+            self.body.configure(fg_color=LIST_CARD_BG)
+        except Exception:
+            pass
         self.body.grid_columnconfigure(0, weight=1)
 
         try:
@@ -616,9 +628,12 @@ class MemManagerTab(ctk.CTkFrame):
 
         footer = ctk.CTkFrame(
             list_card,
-            fg_color="transparent",
+            fg_color=LIST_FOOTER_BG,
+            corner_radius=12,
+            border_width=1,
+            border_color=CARD_BORDER,
         )
-        footer.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 16))
+        footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 18))
         footer.grid_columnconfigure(0, weight=1)
 
         self.new_entry = ctk.CTkEntry(
@@ -630,7 +645,7 @@ class MemManagerTab(ctk.CTkFrame):
             fg_color=ROW_BG,
             font=ctk.CTkFont(size=13),
         )
-        self.new_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=0)
+        self.new_entry.grid(row=0, column=0, sticky="ew", padx=(12, 12), pady=14)
         self.new_entry.bind("<Return>", self._add_item)
 
         self.add_btn = ctk.CTkButton(
@@ -642,7 +657,7 @@ class MemManagerTab(ctk.CTkFrame):
             fg_color=PRIMARY_BTN,
             hover_color=PRIMARY_HOVER,
         )
-        self.add_btn.grid(row=0, column=1, sticky="e")
+        self.add_btn.grid(row=0, column=1, sticky="e", padx=(0, 12), pady=14)
         self._rebuild_list()
 
     def _norm(self, s: str) -> str:
