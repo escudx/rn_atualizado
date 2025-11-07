@@ -75,8 +75,150 @@ ACTION_BAR_BORDER = (
     _mix_hex(ACTION_BAR_BG[0], "#ffffff", 0.16),
     _mix_hex(ACTION_BAR_BG[1], "#000000", 0.12),
 )
+ACTION_BAR_SOFT_BG = (
+    _mix_hex(PANEL_BG[0], "#ffffff", 0.05),
+    _mix_hex(PANEL_BG[1], "#000000", 0.04),
+)
+ACTION_BAR_LINE = (
+    _mix_hex(PANEL_BG[0], "#ffffff", 0.22),
+    _mix_hex(PANEL_BG[1], "#000000", 0.18),
+)
+ACTION_BAR_ACCENT = (
+    _mix_hex(PANEL_BG[0], "#4e91ff", 0.55),
+    _mix_hex(PANEL_BG[1], "#1c5b9d", 0.35),
+)
 ACTION_BAR_TEXT = _theme_color("CTkLabel", "text_color", ("#f5f5f5", "#1a1a1a"))
 COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray38", "#b7b7c5"))
+
+# Troque o valor para "faixa" ou "linha" para testar outras aparências no cabeçalho
+# do campo "Tipo de ação". Também é possível usar a variável de ambiente
+# RN_ACTION_BAR_STYLE para alternar sem editar o arquivo.
+ACTION_BAR_STYLE = os.environ.get("RN_ACTION_BAR_STYLE", "sutil").strip().lower()
+
+ACTION_BAR_STYLES = {
+    "sutil": {
+        "frame": {
+            "fg_color": ACTION_BAR_SOFT_BG,
+            "border_color": ACTION_BAR_BORDER,
+            "border_width": 1,
+            "corner_radius": 10,
+        },
+        "grid": {"padx": (6, 6), "pady": (6, 10)},
+        "label": {
+            "font": {"size": 12, "weight": "bold"},
+            "text_color": ACTION_BAR_TEXT,
+            "grid": {"padx": (12, 8), "pady": (10, 6)},
+        },
+        "combo": {
+            "widget": {"border_width": 1, "border_color": COMBO_BORDER},
+            "grid": {"padx": (0, 12), "pady": (10, 6)},
+        },
+        "arrow": {
+            "grid": {"padx": (8, 12), "pady": (10, 6)},
+            "spacing": 4,
+            "button": {"width": 28},
+        },
+        "hint": {
+            "widget": {"text_color": ("gray75", "#2f2f2f"), "wraplength": 520},
+            "grid": {"padx": 12, "pady": (0, 8)},
+        },
+        "remove": {
+            "grid": {"padx": (0, 12), "pady": (0, 8)},
+            "button": {"width": 90},
+        },
+        "column_weights": (0, 1, 0),
+    },
+    "faixa": {
+        "frame": {
+            "fg_color": ACTION_BAR_BG,
+            "border_width": 0,
+            "corner_radius": 12,
+        },
+        "grid": {"padx": (6, 6), "pady": (6, 10)},
+        "accent": {
+            "color": ACTION_BAR_ACCENT,
+            "width": 4,
+            "padx": (12, 0),
+            "pady": (10, 10),
+        },
+        "content_frame": {
+            "fg_color": ACTION_BAR_SOFT_BG,
+            "corner_radius": 10,
+            "border_width": 1,
+            "border_color": ACTION_BAR_BORDER,
+        },
+        "content_padx": (12, 12),
+        "content_pady": (8, 8),
+        "label": {
+            "font": {"size": 12, "weight": "bold"},
+            "text_color": ACTION_BAR_TEXT,
+            "prefix": "⚙ ",
+            "grid": {"padx": (10, 8), "pady": (6, 4)},
+        },
+        "combo": {
+            "widget": {"border_width": 1, "border_color": COMBO_BORDER},
+            "grid": {"padx": (0, 12), "pady": (6, 4)},
+        },
+        "arrow": {
+            "grid": {"padx": (4, 8), "pady": (6, 4)},
+            "spacing": 2,
+            "button": {"width": 26},
+        },
+        "hint": {
+            "widget": {"text_color": ("gray72", "#303030"), "wraplength": 500},
+            "grid": {"padx": 10, "pady": (0, 6)},
+        },
+        "remove": {
+            "grid": {"padx": (0, 12), "pady": (0, 6)},
+            "button": {"width": 86},
+        },
+        "column_weights": (0, 1, 0),
+    },
+    "linha": {
+        "frame": {
+            "fg_color": "transparent",
+            "border_width": 0,
+            "corner_radius": 0,
+        },
+        "grid": {"padx": (6, 6), "pady": (4, 10)},
+        "content_frame": {"fg_color": "transparent"},
+        "content_padx": (6, 6),
+        "content_pady": (4, 2),
+        "underline": {
+            "color": ACTION_BAR_LINE,
+            "height": 2,
+            "padx": (6, 6),
+            "pady": (0, 8),
+        },
+        "label": {
+            "font": {"size": 12, "weight": "bold"},
+            "text_color": ACTION_BAR_TEXT,
+            "grid": {"padx": (6, 8), "pady": (4, 2)},
+        },
+        "combo": {
+            "widget": {"border_width": 1, "border_color": COMBO_BORDER},
+            "grid": {"padx": (0, 8), "pady": (4, 2)},
+        },
+        "arrow": {
+            "grid": {"padx": (8, 8), "pady": (4, 2)},
+            "spacing": 2,
+            "button": {"width": 24},
+        },
+        "hint": {
+            "widget": {"text_color": ("gray70", "#333333"), "wraplength": 520},
+            "grid": {"padx": 6, "pady": (0, 4)},
+        },
+        "remove": {
+            "grid": {"padx": (0, 8), "pady": (0, 4)},
+            "button": {"width": 80},
+        },
+        "column_weights": (0, 1, 0),
+    },
+}
+
+
+def _action_bar_style():
+    return ACTION_BAR_STYLES.get(ACTION_BAR_STYLE, ACTION_BAR_STYLES["sutil"])
 
 
 def _center_window(win: tk.Toplevel, *, width: Optional[int] = None, height: Optional[int] = None, parent=None):
@@ -814,74 +956,166 @@ class LinhaAcao(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=0, minsize=120)
         self.grid_columnconfigure(1, weight=1)
 
-        self.tipo_bar = ctk.CTkFrame(
-            self,
-            fg_color=ACTION_BAR_BG,
-            border_color=ACTION_BAR_BORDER,
-            border_width=1,
-            corner_radius=8,
-        )
-        self.tipo_bar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=4, pady=(4, 8))
+        style = _action_bar_style()
+        frame_kwargs = {
+            "fg_color": ACTION_BAR_BG,
+            "border_color": ACTION_BAR_BORDER,
+            "border_width": 1,
+            "corner_radius": 8,
+        }
+        frame_kwargs.update(style.get("frame", {}))
+        grid_kwargs = {"padx": (4, 4), "pady": (4, 8)}
+        grid_kwargs.update(style.get("grid", {}))
+
+        self.tipo_bar_holder = ctk.CTkFrame(self, **frame_kwargs)
+        self.tipo_bar_holder.grid(row=0, column=0, columnspan=2, sticky="ew", **grid_kwargs)
+        self.tipo_bar_holder.grid_rowconfigure(0, weight=0)
+        self.tipo_bar_holder.grid_rowconfigure(1, weight=0)
+
+        accent = style.get("accent")
+        if accent:
+            self.tipo_bar_holder.grid_columnconfigure(0, weight=0)
+            self.tipo_bar_holder.grid_columnconfigure(1, weight=1)
+            accent_kwargs = {
+                "fg_color": accent.get("color", ACTION_BAR_ACCENT),
+                "width": accent.get("width", 4),
+            }
+            accent_frame = ctk.CTkFrame(self.tipo_bar_holder, **accent_kwargs)
+            accent_frame.grid(
+                row=0,
+                column=0,
+                rowspan=2,
+                sticky="nsw",
+                padx=accent.get("padx", (12, 0)),
+                pady=accent.get("pady", (8, 8)),
+            )
+            content_column = 1
+        else:
+            self.tipo_bar_holder.grid_columnconfigure(0, weight=1)
+            content_column = 0
+
+        content_kwargs = style.get("content_frame")
+        if content_kwargs is None and accent:
+            content_kwargs = {}
+        if content_kwargs is not None:
+            content_defaults = {"fg_color": "transparent", "border_width": 0, "corner_radius": 0}
+            content_defaults.update(content_kwargs)
+            self.tipo_bar = ctk.CTkFrame(self.tipo_bar_holder, **content_defaults)
+            self.tipo_bar.grid(
+                row=0,
+                column=content_column,
+                sticky="nsew",
+                padx=style.get("content_padx", (0, 0)),
+                pady=style.get("content_pady", (0, 0)),
+            )
+        else:
+            self.tipo_bar = self.tipo_bar_holder
+
         self.tipo_bar.grid_columnconfigure(0, weight=0)
         self.tipo_bar.grid_columnconfigure(1, weight=1)
         self.tipo_bar.grid_columnconfigure(2, weight=0)
 
-        ctk.CTkLabel(
-            self.tipo_bar,
-            text="Tipo de ação",
-            font=ctk.CTkFont(weight="bold", size=12),
-            text_color=ACTION_BAR_TEXT,
-        ).grid(row=0, column=0, sticky="w", padx=(12, 8), pady=(10, 6))
+        column_weights = style.get("column_weights")
+        if isinstance(column_weights, (tuple, list)):
+            for idx, weight in enumerate(column_weights):
+                self.tipo_bar.grid_columnconfigure(idx, weight=weight)
 
-        self.cbo_tipo = ctk.CTkComboBox(
-            self.tipo_bar,
-            values=[
+        label_style = style.get("label", {})
+        label_font = ctk.CTkFont(**label_style.get("font", {"size": 12, "weight": "bold"}))
+        label_text = f"{label_style.get('prefix', '')}Tipo de ação"
+        label_kwargs = {
+            "text": label_text,
+            "font": label_font,
+            "text_color": label_style.get("text_color", ACTION_BAR_TEXT),
+        }
+        label_grid = label_style.get("grid", {"padx": (12, 8), "pady": (10, 6)})
+        ctk.CTkLabel(self.tipo_bar, **label_kwargs).grid(row=0, column=0, sticky="w", **label_grid)
+
+        combo_style = style.get("combo", {})
+        combo_widget = {
+            "values": [
                 "Acionar Tarefa",
                 "Atualizar Status",
                 "Texto Livre",
             ],
-            variable=self.var_tipo,
-            command=lambda *_: self._refresh(),
-            border_width=1,
-            border_color=COMBO_BORDER,
-        )
-        self.cbo_tipo.grid(row=0, column=1, sticky="ew", padx=(0, 12), pady=(10, 6))
+            "variable": self.var_tipo,
+            "command": lambda *_: self._refresh(),
+        }
+        combo_widget.update(combo_style.get("widget", {}))
+        self.cbo_tipo = ctk.CTkComboBox(self.tipo_bar, **combo_widget)
+        combo_grid = combo_style.get("grid", {"padx": (0, 12), "pady": (10, 6)})
+        self.cbo_tipo.grid(row=0, column=1, sticky="ew", **combo_grid)
 
+        arrow_style = style.get("arrow", {})
         arrow_row = ctk.CTkFrame(self.tipo_bar, fg_color="transparent")
-        arrow_row.grid(row=0, column=2, sticky="e", padx=(0, 12), pady=(10, 6))
+        arrow_grid = arrow_style.get("grid", {"padx": (0, 12), "pady": (10, 6)})
+        arrow_row.grid(row=0, column=2, sticky="e", **arrow_grid)
+
+        button_spacing = arrow_style.get("spacing", 4)
+        button_kwargs = {"width": 28, "height": 28}
+        button_kwargs.update(arrow_style.get("button", {}))
 
         app = self.winfo_toplevel()
         row_list = getattr(app, self.row_list_key, [])
         frame_parent = self.master
 
-        ctk.CTkButton(
+        up_btn = ctk.CTkButton(
             arrow_row,
             text="↑",
-            width=28,
             command=lambda: app._move_row(self, -1, row_list, frame_parent),
-        ).grid(row=0, column=0, padx=(0, 4))
-        ctk.CTkButton(
+            **button_kwargs,
+        )
+        up_btn.grid(row=0, column=0, padx=(0, button_spacing))
+        down_btn = ctk.CTkButton(
             arrow_row,
             text="↓",
-            width=28,
             command=lambda: app._move_row(self, 1, row_list, frame_parent),
-        ).grid(row=0, column=1)
+            **button_kwargs,
+        )
+        down_btn.grid(row=0, column=1)
 
-        ctk.CTkLabel(
-            self.tipo_bar,
-            text=_t("action_type_hint"),
-            font=ctk.CTkFont(size=11),
-            text_color=("gray70", "#2f2f2f"),
-            wraplength=480,
-            justify="left",
-        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 10))
+        hint_style = style.get("hint")
+        if hint_style is not False:
+            hint_widget = {
+                "text": _t("action_type_hint"),
+                "font": ctk.CTkFont(size=11),
+                "text_color": ("gray70", "#2f2f2f"),
+                "wraplength": 480,
+                "justify": "left",
+            }
+            if isinstance(hint_style, dict):
+                hint_widget.update(hint_style.get("widget", {}))
+                hint_grid = hint_style.get("grid", {"padx": 12, "pady": (0, 10)})
+            else:
+                hint_grid = {"padx": 12, "pady": (0, 10)}
+            ctk.CTkLabel(self.tipo_bar, **hint_widget).grid(
+                row=1, column=0, columnspan=2, sticky="w", **hint_grid
+            )
 
-        ctk.CTkButton(
-            self.tipo_bar,
-            text="Remover",
-            command=self._remove,
-            width=90,
-        ).grid(row=1, column=2, sticky="e", padx=(0, 12), pady=(0, 10))
+        remove_style = style.get("remove", {})
+        remove_button_kwargs = {"text": "Remover", "command": self._remove, "width": 90}
+        remove_button_kwargs.update(remove_style.get("button", {}))
+        remove_grid = remove_style.get("grid", {"padx": (0, 12), "pady": (0, 10)})
+        ctk.CTkButton(self.tipo_bar, **remove_button_kwargs).grid(
+            row=1, column=2, sticky="e", **remove_grid
+        )
+
+        underline = style.get("underline")
+        if underline:
+            underline_kwargs = {
+                "fg_color": underline.get("color", ACTION_BAR_BORDER),
+                "height": underline.get("height", 2),
+            }
+            underline_frame = ctk.CTkFrame(self.tipo_bar_holder, **underline_kwargs)
+            underline_column = 1 if accent else 0
+            underline_frame.grid(
+                row=1,
+                column=underline_column,
+                columnspan=1,
+                sticky="ew",
+                padx=underline.get("padx", (4, 4)),
+                pady=underline.get("pady", (0, 8)),
+            )
 
         self.frm_dyn = ctk.CTkFrame(self, fg_color="transparent")
         self.frm_dyn.grid(row=1, column=0, columnspan=2, sticky="ew", padx=(4, 4), pady=(0, 4))
