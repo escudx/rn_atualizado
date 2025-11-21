@@ -63,28 +63,26 @@ def _mix_hex(color_a: str, color_b: str, factor: float) -> str:
         return color_a
 
 
-# --- PALETA ESTILO CARD UI (DEFINIDA) ---
-PANEL_BG = _theme_color("CTkFrame", "fg_color", ("#18181b", "#f4f4f5"))
-# Cartões flutuantes (destaque sutil sobre o fundo)
-CARD_BG = (_mix_hex(PANEL_BG[0], "#ffffff", 0.08), _mix_hex(PANEL_BG[1], "#000000", 0.05))
-# Bordas de definição (essencial para o visual)
-CARD_BORDER = (_mix_hex(PANEL_BG[0], "#ffffff", 0.25), _mix_hex(PANEL_BG[1], "#000000", 0.20))
-# Fundo de Inputs e Itens da Lista (efeito "sunken")
-INPUT_BG = (_mix_hex(PANEL_BG[0], "#000000", 0.2), _mix_hex(PANEL_BG[1], "#ffffff", 0.4))
+# --- PALETA ESTILO CÁPSULA (V6) ---
+# Fundo cinza escuro para os blocos (Cápsulas)
+CAPSULE_BG = ("#f0f0f0", "#2b2b2b")
+# Borda sutil para definir os blocos
+CAPSULE_BORDER = ("#dce4ee", "#454545")
 
-# Cores de Texto e Ação
-ACTION_BAR_TEXT = _theme_color("CTkLabel", "text_color", ("#f4f4f4", "#1a1a1a"))
-# Ajuste do fundo da Action Bar para combinar com o novo PANEL_BG
-ACTION_BAR_BG = (_mix_hex(PANEL_BG[0], "#ffffff", 0.06), _mix_hex(PANEL_BG[1], "#000000", 0.05))
-ACTION_BAR_BORDER = (_mix_hex(ACTION_BAR_BG[0], "#ffffff", 0.18), _mix_hex(ACTION_BAR_BG[1], "#000000", 0.14))
-
-BADGE_BG = PRIMARY_BTN = _theme_color("CTkButton", "fg_color", ("#3B8ED0", "#1F6AA5"))
-BADGE_TEXT = ("#ffffff", "#ffffff")
-HINT_TEXT = ("gray60", "gray40")
-PRIMARY_HOVER = _theme_color("CTkButton", "hover_color", ("#36719F", "#144870"))
+# Manter cores de ação
 DANGER_BG = ("#2e2e2e", "#ff6b6b")
 DANGER_HOVER = ("#c9585c", "#ff8080")
+PRIMARY_BTN = _theme_color("CTkButton", "fg_color", ("#3B8ED0", "#1F6AA5"))
+PRIMARY_HOVER = _theme_color("CTkButton", "hover_color", ("#36719F", "#144870"))
+BADGE_BG = PRIMARY_BTN
+BADGE_TEXT = ("#ffffff", "#ffffff")
+HINT_TEXT = ("gray60", "gray40")
+ACTION_BAR_TEXT = _theme_color("CTkLabel", "text_color", ("#f4f4f4", "#1a1a1a"))
+PANEL_BG = _theme_color("CTkFrame", "fg_color", ("#18181b", "#f4f4f5"))
+ACTION_BAR_BG = (_mix_hex(PANEL_BG[0], "#ffffff", 0.06), _mix_hex(PANEL_BG[1], "#000000", 0.05))
+ACTION_BAR_BORDER = (_mix_hex(ACTION_BAR_BG[0], "#ffffff", 0.18), _mix_hex(ACTION_BAR_BG[1], "#000000", 0.14))
 COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray45", "#b5b5c8"))
+INPUT_BG = (_mix_hex(PANEL_BG[0], "#000000", 0.2), _mix_hex(PANEL_BG[1], "#ffffff", 0.4))
 
 
 def _center_window(win: tk.Toplevel, *, width: Optional[int] = None, height: Optional[int] = None, parent=None):
@@ -424,44 +422,20 @@ class IntSpin(ctk.CTkFrame):
         self._notify()
 
 class MemManagerTab(ctk.CTkFrame):
-    def __init__(
-        self,
-        master,
-        title: str,
-        mem_list: list,
-        refresh_cb,
-        *,
-        hint_text: Optional[str] = None,
-        import_label: Optional[str] = None,
-        list_label: Optional[str] = None,
-        placeholder: Optional[str] = None,
-        add_button_text: Optional[str] = None,
-        count_labels: Optional[dict] = None,
-        forbidden_values: Optional[list[str]] = None,
-        layout: str = "vertical",
-    ):
+    def __init__(self, master, title, mem_list, refresh_cb, **kwargs):
         super().__init__(master, fg_color="transparent")
         self.app = master.winfo_toplevel()
         self.mem_list = mem_list
         self.refresh_cb = refresh_cb
-        self.count_labels = count_labels or {
-            "none": _t("mem_none"),
-            "one": _t("mem_one"),
-            "many": _t("mem_many"),
-        }
-        self.forbidden = {
-            self._norm(v).lower()
-            for v in (forbidden_values or [])
-            if self._norm(v)
-        }
 
-        hint_text = hint_text or _t("mem_hint")
-        import_label = import_label or _t("mem_import_label")
-        list_label = list_label or _t("mem_saved_label")
-        placeholder = placeholder or _t("mem_new_placeholder")
-        add_button_text = add_button_text or _t("mem_add_button")
+        hint_text = kwargs.get("hint_text", _t("mem_hint"))
+        import_label = kwargs.get("import_label", _t("mem_import_label"))
+        list_label = kwargs.get("list_label", _t("mem_saved_label"))
+        placeholder = kwargs.get("placeholder", _t("mem_new_placeholder"))
+        add_button_text = kwargs.get("add_button_text", _t("mem_add_button"))
+        self.forbidden = {self._norm(v).lower() for v in kwargs.get("forbidden_values", []) if self._norm(v)}
+        layout = kwargs.get("layout", "vertical").lower()
 
-        layout = (layout or "vertical").lower()
         side_by_side = layout in {"horizontal", "side", "two-column", "grid"}
 
         self.grid_columnconfigure(0, weight=1, uniform="mem")
@@ -471,124 +445,55 @@ class MemManagerTab(ctk.CTkFrame):
         else:
             self.grid_rowconfigure(2, weight=1)
 
+        # --- 1. HEADER CÁPSULA ---
         header_cols = 2 if side_by_side else 1
-        header = ctk.CTkFrame(self, fg_color="transparent")
+        header = ctk.CTkFrame(self, corner_radius=8, fg_color=CAPSULE_BG, border_width=1, border_color=CAPSULE_BORDER)
         header.grid(row=0, column=0, columnspan=header_cols, sticky="ew", pady=(0, 12))
         header.grid_columnconfigure(0, weight=1)
-        header.grid_columnconfigure(1, weight=0)
 
-        ctk.CTkLabel(
-            header,
-            text=title,
-            font=ctk.CTkFont(size=16, weight="bold"),
-        ).grid(row=0, column=0, sticky="w", padx=(4, 12), pady=(0, 4))
+        ctk.CTkLabel(header, text=title, font=ctk.CTkFont(size=16, weight="bold")).grid(row=0, column=0, sticky="w", padx=12, pady=(10, 0))
 
         self.count_var = tk.StringVar(value="")
-        self.count_badge = ctk.CTkLabel(
-            header,
-            textvariable=self.count_var,
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color=BADGE_TEXT,
-            fg_color=BADGE_BG,
-            corner_radius=14,
-            padx=10,
-            pady=4,
-        )
-        self.count_badge.grid(row=0, column=1, sticky="e", padx=(12, 4), pady=(0, 4))
+        ctk.CTkLabel(header, textvariable=self.count_var, font=ctk.CTkFont(size=12), text_color=("gray50", "gray70")).grid(row=0, column=1, sticky="e", padx=12, pady=(10, 0))
 
-        wrap_length = 360 if side_by_side else 520
-        header_hint = hint_text if not side_by_side else ""
-        if header_hint:
-            ctk.CTkLabel(
-                header,
-                text=header_hint,
-                justify="left",
-                wraplength=wrap_length,
-                text_color=HINT_TEXT,
-            ).grid(row=1, column=0, columnspan=2, sticky="we", padx=(4, 12), pady=(0, 8))
+        if hint_text and not side_by_side:
+            ctk.CTkLabel(header, text=hint_text, justify="left", wraplength=480, text_color=HINT_TEXT).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(6, 10))
 
-        import_card = ctk.CTkFrame(
-            self,
-            corner_radius=10,
-            fg_color=CARD_BG,
-            border_width=2,
-            border_color=CARD_BORDER,
-        )
+        # --- 2. IMPORT CARD CÁPSULA ---
+        import_card = ctk.CTkFrame(self, corner_radius=8, fg_color=CAPSULE_BG, border_width=1, border_color=CAPSULE_BORDER)
         if side_by_side:
-            import_card.grid(row=1, column=0, sticky="nsew", padx=(4, 12), pady=(0, 12))
+            import_card.grid(row=1, column=0, sticky="nsew", padx=(0, 8), pady=(0, 12))
         else:
-            import_card.grid(row=1, column=0, sticky="nsew", padx=4, pady=(0, 12))
+            import_card.grid(row=1, column=0, sticky="ew", pady=(0, 12))
         import_card.grid_columnconfigure(0, weight=1)
         import_card.grid_rowconfigure(1, weight=1)
 
-        ctk.CTkLabel(
-            import_card,
-            text=import_label,
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).grid(row=0, column=0, sticky="w", padx=18, pady=(18, 6))
+        ctk.CTkLabel(import_card, text=import_label, font=ctk.CTkFont(size=13, weight="bold")).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
 
-        box_height = 160 if side_by_side else 120
-        self.import_box = ctk.CTkTextbox(
-            import_card,
-            height=box_height,
-            corner_radius=8,
-            border_width=1,
-            border_color=CARD_BORDER,
-            fg_color=INPUT_BG,
-        )
-        self.import_box.grid(row=1, column=0, sticky="nsew", padx=18, pady=(0, 12))
-        self.import_box.configure(font=ctk.CTkFont(size=12))
+        box_h = 140 if side_by_side else 100
+        self.import_box = ctk.CTkTextbox(import_card, height=box_h)
+        self.import_box.grid(row=1, column=0, sticky="nsew", padx=12)
 
-        import_hint = hint_text if side_by_side else ""
-        if import_hint:
-            ctk.CTkLabel(
-                import_card,
-                text=import_hint,
-                justify="left",
-                wraplength=320,
-                text_color=HINT_TEXT,
-            ).grid(row=2, column=0, sticky="w", padx=18, pady=(0, 8))
+        if hint_text and side_by_side:
+            ctk.CTkLabel(import_card, text=hint_text, justify="left", wraplength=300, text_color=HINT_TEXT, font=ctk.CTkFont(size=11)).grid(row=2, column=0, sticky="w", padx=12, pady=(6, 0))
 
-        btn_row = 3 if import_hint else 2
+        ctk.CTkButton(import_card, text="Importar", width=120, command=self._import_items, fg_color=PRIMARY_BTN, hover_color=PRIMARY_HOVER).grid(row=3, column=0, sticky="e", padx=12, pady=(10, 12))
 
-        ctk.CTkButton(
-            import_card,
-            text="Importar",
-            width=120,
-            command=self._import_items,
-            corner_radius=8,
-            fg_color=PRIMARY_BTN,
-            hover_color=PRIMARY_HOVER,
-        ).grid(row=btn_row, column=0, sticky="e", padx=18, pady=(4, 18))
-
-        list_card = ctk.CTkFrame(
-            self,
-            corner_radius=10,
-            fg_color=CARD_BG,
-            border_width=2,
-            border_color=CARD_BORDER,
-        )
+        # --- 3. LISTA CÁPSULA ---
+        list_card = ctk.CTkFrame(self, corner_radius=8, fg_color=CAPSULE_BG, border_width=1, border_color=CAPSULE_BORDER)
         if side_by_side:
-            list_card.grid(row=1, column=1, sticky="nsew", padx=(12, 4), pady=(0, 12))
+            list_card.grid(row=1, column=1, sticky="nsew", padx=(8, 0), pady=(0, 12))
         else:
-            list_card.grid(row=2, column=0, sticky="nsew", padx=4)
+            list_card.grid(row=2, column=0, sticky="nsew")
         list_card.grid_columnconfigure(0, weight=1)
         list_card.grid_rowconfigure(1, weight=1)
 
-        ctk.CTkLabel(
-            list_card,
-            text=list_label,
-            font=ctk.CTkFont(size=14, weight="bold"),
-        ).grid(row=0, column=0, sticky="w", padx=24, pady=(16, 6))
+        ctk.CTkLabel(list_card, text=list_label, font=ctk.CTkFont(size=13, weight="bold")).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
 
-        self.scroll_frame = ctk.CTkScrollableFrame(list_card, fg_color=CARD_BG)
-        self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 12))
+        self.scroll_frame = ctk.CTkScrollableFrame(list_card, fg_color="transparent")
+        self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=6, pady=0)
         self.scroll_frame.grid_columnconfigure(0, weight=1)
-        self.body = scrollable_body(self.scroll_frame)
-        try:
-            self.body.configure(fg_color=CARD_BG)
-        except Exception:
-            pass
+        self.body = getattr(self.scroll_frame, "scrollable_frame", self.scroll_frame)
         self.body.grid_columnconfigure(0, weight=1)
 
         try:
@@ -598,180 +503,93 @@ class MemManagerTab(ctk.CTkFrame):
 
         self.rows = []
 
-        footer = ctk.CTkFrame(
-            list_card,
-            fg_color=CARD_BG,
-            corner_radius=10,
-            border_width=2,
-            border_color=CARD_BORDER,
-        )
-        footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 18))
+        footer = ctk.CTkFrame(list_card, fg_color="transparent")
+        footer.grid(row=2, column=0, sticky="ew", padx=12, pady=(10, 12))
         footer.grid_columnconfigure(0, weight=1)
 
-        self.new_entry = ctk.CTkEntry(
-            footer,
-            placeholder_text=placeholder,
-            corner_radius=8,
-            border_width=1,
-            border_color=CARD_BORDER,
-            fg_color=INPUT_BG,
-            font=ctk.CTkFont(size=13),
-        )
-        self.new_entry.grid(row=0, column=0, sticky="ew", padx=(12, 12), pady=14)
+        self.new_entry = ctk.CTkEntry(footer, placeholder_text=placeholder)
+        self.new_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.new_entry.bind("<Return>", self._add_item)
+        self.add_btn = ctk.CTkButton(footer, text=add_button_text, width=100, command=self._add_item, fg_color=PRIMARY_BTN, hover_color=PRIMARY_HOVER)
+        self.add_btn.grid(row=0, column=1, sticky="e")
 
-        self.add_btn = ctk.CTkButton(
-            footer,
-            text=add_button_text,
-            width=120,
-            command=self._add_item,
-            corner_radius=8,
-            fg_color=PRIMARY_BTN,
-            hover_color=PRIMARY_HOVER,
-        )
-        self.add_btn.grid(row=0, column=1, sticky="e", padx=(0, 12), pady=14)
         self._rebuild_list()
 
-    def _norm(self, s: str) -> str:
+    def _norm(self, s):
         return " ".join((s or "").split()).strip()
 
-    def _is_allowed(self, value: str) -> bool:
-        norm = self._norm(value)
-        if not norm:
-            return False
-        return norm.lower() not in self.forbidden
+    def _is_allowed(self, v):
+        norm = self._norm(v)
+        return norm.lower() not in self.forbidden if norm else False
 
-    def _rebuild_list(self):
-        for row in self.rows:
-            row.destroy()
-        self.rows.clear()
-        self.mem_list.sort(key=str.lower)
-
-        total = len(self.mem_list)
-        try:
-            if total == 0:
-                self.count_var.set(self.count_labels.get("none", ""))
-            elif total == 1:
-                self.count_var.set(self.count_labels.get("one", ""))
-            else:
-                self.count_var.set(self.count_labels.get("many", "").format(n=total))
-        except Exception:
-            pass
-
-        for i, item in enumerate(list(self.mem_list)):
-            row = ctk.CTkFrame(
-                self.body,
-                fg_color=INPUT_BG,
-                corner_radius=6,
-                border_width=1,
-                border_color=CARD_BORDER,
-            )
-            row.grid(row=i, column=0, sticky="ew", pady=(0, 12), padx=2)
-            row.grid_columnconfigure(0, weight=1)
-            row.grid_columnconfigure(1, weight=0)
-
-            entry = ctk.CTkEntry(
-                row,
-                corner_radius=6,
-                border_width=1,
-                border_color=CARD_BORDER,
-                fg_color=INPUT_BG,
-                font=ctk.CTkFont(size=13),
-            )
-            entry.insert(0, item)
-            entry.grid(row=0, column=0, sticky="ew", padx=(12, 10), pady=10)
-
-            btn_holder = ctk.CTkFrame(row, fg_color="transparent")
-            btn_holder.grid(row=0, column=1, sticky="e", padx=(0, 12), pady=10)
-
-            save_btn = ctk.CTkButton(
-                btn_holder,
-                text="Renomear",
-                width=110,
-                command=lambda e=entry, old=item: self._rename_item(old, e.get()),
-                corner_radius=8,
-                fg_color=PRIMARY_BTN,
-                hover_color=PRIMARY_HOVER,
-            )
-            save_btn.pack(side="left", padx=(0, 8))
-
-            del_btn = ctk.CTkButton(
-                btn_holder,
-                text="Remover",
-                width=110,
-                command=lambda i_val=item: self._remove_item(i_val),
-                corner_radius=8,
-                fg_color=DANGER_BG,
-                hover_color=DANGER_HOVER,
-            )
-            del_btn.pack(side="left")
-
-            self.rows.append(row)
-        self.refresh_cb()
-
-    def _add_item(self, event=None):
-        new_val = self._norm(self.new_entry.get())
-        if not new_val or len(new_val) < 3:
+    def _add_item(self, e=None):
+        v = self._norm(self.new_entry.get())
+        if not v or len(v) < 3:
             return
-        if not self._is_allowed(new_val):
-            messagebox.showwarning("Inválido", "O nome informado não pode ser utilizado.", parent=self.app)
+        if not self._is_allowed(v):
             return
-        if not any(new_val.lower() == x.lower() for x in self.mem_list):
-            self.mem_list.append(new_val)
+        if not any(v.lower() == x.lower() for x in self.mem_list):
+            self.mem_list.append(v)
             self._rebuild_list()
         self.new_entry.delete(0, "end")
 
-    def _remove_item(self, item_to_remove: str):
-        if messagebox.askyesno("Remover", f"Remover o item '{item_to_remove}'?", parent=self.app):
-            try:
-                self.mem_list.remove(item_to_remove)
-            except ValueError:
-                pass
-            self._rebuild_list()
-
-    def _rename_item(self, old_val: str, new_val: str):
-        new_val = self._norm(new_val)
-        if not new_val or len(new_val) < 3:
-            messagebox.showwarning("Inválido", "O nome não pode estar vazio.", parent=self.app)
-            return
-        if old_val == new_val:
-            return
-        if not self._is_allowed(new_val):
-            messagebox.showwarning("Inválido", "O nome informado não pode ser utilizado.", parent=self.app)
-            return
-        if any(new_val.lower() == x.lower() for x in self.mem_list if x.lower() != old_val.lower()):
-            messagebox.showwarning("Duplicado", f"O item '{new_val}' já existe.", parent=self.app)
-            return
-        try:
-            idx = self.mem_list.index(old_val)
-            self.mem_list[idx] = new_val
-        except ValueError:
-            pass
-        self._rebuild_list()
-
     def _import_items(self):
-        text = self.import_box.get("1.0", "end").strip()
-        if not text:
+        txt = self.import_box.get("1.0", "end").strip()
+        if not txt:
             return
-
-        items = [self._norm(line) for line in text.split("\n")]
-        added_count = 0
-        for item in items:
-            if not item or len(item) < 3:
-                continue
-            if not self._is_allowed(item):
-                continue
-            if not any(item.lower() == x.lower() for x in self.mem_list):
-                self.mem_list.append(item)
-                added_count += 1
-        
-        if added_count > 0:
+        added = 0
+        for x in txt.split("\n"):
+            val = self._norm(x)
+            if len(val) >= 3 and self._is_allowed(val) and not any(val.lower() == i.lower() for i in self.mem_list):
+                self.mem_list.append(val)
+                added += 1
+        if added:
             self._rebuild_list()
-            messagebox.showinfo("Importação Concluída", f"{added_count} novos itens adicionados.", parent=self.app)
-        else:
-            messagebox.showinfo("Importação", "Nenhum item novo foi adicionado.", parent=self.app)
-        
+            messagebox.showinfo("Importar", f"{added} itens.")
         self.import_box.delete("1.0", "end")
+
+    def _remove_item(self, val):
+        if messagebox.askyesno("Remover", f"Excluir '{val}'?"):
+            if val in self.mem_list:
+                self.mem_list.remove(val)
+                self._rebuild_list()
+
+    def _rename_item(self, old, new_val):
+        nv = self._norm(new_val)
+        if len(nv) < 3 or not self._is_allowed(nv):
+            return
+        if any(nv.lower() == x.lower() for x in self.mem_list if x != old):
+            return
+        if old in self.mem_list:
+            self.mem_list[self.mem_list.index(old)] = nv
+            self._rebuild_list()
+
+    def _rebuild_list(self):
+        for r in self.rows:
+            r.destroy()
+        self.rows.clear()
+        self.mem_list.sort(key=str.lower)
+        total = len(self.mem_list)
+        self.count_var.set(f"{total} itens salvos" if total > 1 else f"{total} item salvo")
+
+        for i, item in enumerate(self.mem_list):
+            row = ctk.CTkFrame(self.body, corner_radius=6, fg_color=CAPSULE_BG, border_width=1, border_color=CAPSULE_BORDER)
+            row.grid(row=i, column=0, sticky="ew", pady=(0, 8))
+            row.grid_columnconfigure(0, weight=1)
+
+            entry = ctk.CTkEntry(row, fg_color="transparent", border_width=0)
+            entry.insert(0, item)
+            entry.grid(row=0, column=0, sticky="ew", padx=(8, 4), pady=6)
+
+            btn_box = ctk.CTkFrame(row, fg_color="transparent")
+            btn_box.grid(row=0, column=1, sticky="e", padx=(0, 8), pady=6)
+
+            ctk.CTkButton(btn_box, text="Renomear", width=70, height=24, font=ctk.CTkFont(size=11), command=lambda e=entry, o=item: self._rename_item(o, e.get()), fg_color=PRIMARY_BTN, hover_color=PRIMARY_HOVER).pack(side="left", padx=(0, 6))
+
+            ctk.CTkButton(btn_box, text="Remover", width=70, height=24, font=ctk.CTkFont(size=11), command=lambda o=item: self._remove_item(o), fg_color=DANGER_BG, hover_color=DANGER_HOVER).pack(side="left")
+
+            self.rows.append(row)
+        self.refresh_cb()
 
 class LinhaCondicao(ctk.CTkFrame):
     def __init__(self, master, on_change, on_remove):
