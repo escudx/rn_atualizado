@@ -451,7 +451,11 @@ class MemManagerTab(ctk.CTkFrame):
         header.grid(row=0, column=0, columnspan=header_cols, sticky="ew", pady=(0, 12))
         header.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(header, text=title, font=ctk.CTkFont(size=16, weight="bold")).grid(row=0, column=0, sticky="w", padx=12, pady=(10, 0))
+        ctk.CTkLabel(
+            header,
+            text=title,
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).grid(row=0, column=0, sticky="w", padx=16, pady=(16, 12))
 
         self.count_var = tk.StringVar(value="")
         ctk.CTkLabel(header, textvariable=self.count_var, font=ctk.CTkFont(size=12), text_color=("gray50", "gray70")).grid(row=0, column=1, sticky="e", padx=12, pady=(10, 0))
