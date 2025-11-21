@@ -1090,8 +1090,11 @@ class RNBuilder(ctk.CTk):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.rns: list[str] = []
+        self.flows: dict[str, list[str]] = {"Fluxo Padrão": []}
+        self.current_flow: str = "Fluxo Padrão"
         self.start_idx = tk.IntVar(value=1)
+        self.flow_var = tk.StringVar(value=self.current_flow)
+        self.flow_combo = None
 
         self._mem_tasks: list[str] = []
         self._mem_fields: list[str] = []
@@ -1163,6 +1166,98 @@ class RNBuilder(ctk.CTk):
             combo.configure(values=self._mem_get_fields())
         except Exception:
             pass
+
+    def _get_flow_names(self):
+        return list(self.flows.keys()) if self.flows else ["Fluxo Padrão"]
+
+    def _ensure_flow(self, name: str):
+        if not name:
+            name = "Fluxo Padrão"
+        if name not in self.flows:
+            self.flows[name] = []
+        return name
+
+    def _current_rns(self):
+        self.current_flow = self._ensure_flow(self.current_flow)
+        return self.flows[self.current_flow]
+
+    def _set_current_flow(self, name: str):
+        name = self._ensure_flow(self._norm(name))
+        self.current_flow = name
+        self.flow_var.set(name)
+        self._refresh_flow_controls()
+        self._refresh_textbox()
+
+    def _refresh_flow_controls(self):
+        names = self._get_flow_names()
+        if not names:
+            names = ["Fluxo Padrão"]
+        if self.current_flow not in names:
+            self.current_flow = names[0]
+        try:
+            self.flow_combo.configure(values=names)
+        except Exception:
+            pass
+        try:
+            self.flow_var.set(self.current_flow)
+        except Exception:
+            pass
+
+    def _on_flow_selected(self, *_):
+        name = self.flow_var.get()
+        if name not in self.flows:
+            name = self._get_flow_names()[0]
+        self.current_flow = name
+        self.flow_var.set(name)
+        self._refresh_textbox()
+
+    def _ask_flow_name(self, title: str, initial: str = "") -> str:
+        try:
+            dialog = ctk.CTkInputDialog(text=title, title=title)
+            if initial:
+                dialog.entry.delete(0, "end")
+                dialog.entry.insert(0, initial)
+            dialog._center()
+            result = dialog.get_input()
+        except Exception:
+            result = None
+        return self._norm(result or "")
+
+    def _new_flow(self):
+        name = self._ask_flow_name("Nome do novo fluxo")
+        if not name:
+            return
+        if name in self.flows:
+            messagebox.showinfo("Fluxo existente", "Já existe um fluxo com esse nome.", parent=self)
+            return
+        self.flows[name] = []
+        self._set_current_flow(name)
+
+    def _rename_flow(self):
+        old = self.current_flow
+        name = self._ask_flow_name("Renomear fluxo", initial=old)
+        if not name or name == old:
+            return
+        if name in self.flows:
+            messagebox.showinfo("Fluxo existente", "Já existe um fluxo com esse nome.", parent=self)
+            return
+        self.flows[name] = self.flows.pop(old)
+        self._set_current_flow(name)
+
+    def _delete_flow(self):
+        if len(self.flows) <= 1:
+            messagebox.showinfo("Fluxos", "É necessário ter pelo menos um fluxo.", parent=self)
+            return
+        if not messagebox.askyesno("Remover fluxo", f"Remover o fluxo '{self.current_flow}' e suas RNs?", parent=self):
+            return
+        try:
+            del self.flows[self.current_flow]
+        except Exception:
+            pass
+        remaining = self._get_flow_names()
+        self.current_flow = remaining[0] if remaining else "Fluxo Padrão"
+        self._refresh_flow_controls()
+        self._refresh_textbox()
 
     def _resp_get_options(self):
         seen = set()
@@ -1577,24 +1672,29 @@ class RNBuilder(ctk.CTk):
         self._refresh_task_combos(); self._refresh_field_combos()
 
         self._clear_builder()
-        
+
+        self.flows = {"Fluxo Padrão": []}
+        self.current_flow = "Fluxo Padrão"
+        self.flow_var.set(self.current_flow)
+        self._refresh_flow_controls()
+
         try:
             if hasattr(self, "_reset_builder_defaults"):
                 self._reset_builder_defaults()
-            if hasattr(self, "_clear_rns"):
-                self._clear_rns(confirm=False)
             if hasattr(self, "_clear_preview"):
                 self._clear_preview()
             if hasattr(self, "_update_preview"):
                 self._update_preview()
             if hasattr(self, "_ensure_min_builder_rows"):
                 self._ensure_min_builder_rows()
+            if hasattr(self, "_refresh_textbox"):
+                self._refresh_textbox()
         except Exception:
             pass
 
     def _collect_project(self) -> dict:
         proj = {
-            "version": 4,
+            "version": 5,
             "lang": get_lang(),
             "header": {
                 "start_idx": int(self.start_idx.get()),
@@ -1607,7 +1707,8 @@ class RNBuilder(ctk.CTk):
                 "campos": list(self._mem_fields),
                 "responsaveis": list(self._resp_defaults),
             },
-            "rns": list(self.rns),
+            "flows": {k: list(v) for k, v in self.flows.items()},
+            "rns": list(self.flows.get("Fluxo Padrão", [])),
         }
         try:
             if hasattr(self, "_collect_builder_into"):
@@ -1653,7 +1754,15 @@ class RNBuilder(ctk.CTk):
             except Exception:
                 pass
 
-            self.rns = list(proj.get("rns", []))
+            flows_data = proj.get("flows")
+            if isinstance(flows_data, dict) and flows_data:
+                self.flows = {k: list(v) for k, v in flows_data.items()}
+            else:
+                legacy = proj.get("rns", [])
+                self.flows = {"Fluxo Padrão": list(legacy) if isinstance(legacy, list) else []}
+            self.current_flow = next(iter(self.flows.keys()), "Fluxo Padrão")
+            self.flow_var.set(self.current_flow)
+            self._refresh_flow_controls()
             try:
                 if hasattr(self, "_refresh_textbox"):
                     self._refresh_textbox()
@@ -2356,28 +2465,51 @@ def _attach_panels_to_RNBuilder():
         )
         self.rn_collapsible.grid(row=1, column=0, padx=(0,0), pady=(0,0), sticky="nsew")
         rn_group = self.rn_collapsible.get_inner_frame()
-        rn_group.grid_rowconfigure(1, weight=2)
-        rn_group.grid_rowconfigure(2, weight=3)
+        rn_group.grid_rowconfigure(2, weight=2)
+        rn_group.grid_rowconfigure(3, weight=3)
         rn_group.grid_columnconfigure(0, weight=1)
 
+        flow_bar = ctk.CTkFrame(rn_group, fg_color="transparent")
+        flow_bar.grid(row=0, column=0, sticky="ew", padx=0, pady=(0, 6))
+        flow_bar.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(flow_bar, text="Fluxo:", font=ctk.CTkFont(size=13, weight="bold")).grid(row=0, column=0, sticky="w", padx=(0, 8))
+
+        self.flow_combo = ctk.CTkComboBox(
+            flow_bar,
+            variable=self.flow_var,
+            values=self._get_flow_names(),
+            command=self._on_flow_selected,
+            width=220,
+        )
+        self.flow_combo.grid(row=0, column=1, sticky="w", pady=2)
+
+        flow_btns = ctk.CTkFrame(flow_bar, fg_color="transparent")
+        flow_btns.grid(row=0, column=2, sticky="e", padx=(8, 0))
+        ctk.CTkButton(flow_btns, text="Novo", width=70, command=self._new_flow).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(flow_btns, text="Renomear", width=90, command=self._rename_flow).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(flow_btns, text="Excluir", width=80, command=self._delete_flow, fg_color=DANGER_BG, hover_color=DANGER_HOVER).pack(side="left")
+
         right_btnbar = ctk.CTkFrame(rn_group, fg_color="transparent")
-        right_btnbar.grid(row=0, column=0, sticky="w", padx=0, pady=(0, 6))
+        right_btnbar.grid(row=1, column=0, sticky="w", padx=0, pady=(0, 6))
         ctk.CTkButton(right_btnbar, text="Copiar RN", command=self._copy_single_rn, width=120).pack(side="left", padx=(0, 6))
         ctk.CTkButton(right_btnbar, text="Copiar tudo", command=self._copy_all, width=110).pack(side="left", padx=(0, 6))
         ctk.CTkButton(right_btnbar, text="Salvar .txt", command=self._save_txt, width=110).pack(side="left", padx=(0, 6))
         ctk.CTkButton(right_btnbar, text="Limpar RNs", command=lambda: self._clear_rns(confirm=True), width=110).pack(side="left")
 
         self.rn_mgr = ctk.CTkScrollableFrame(rn_group)
-        self.rn_mgr.grid(row=1, column=0, sticky="nsew", padx=0, pady=(0, 6))
+        self.rn_mgr.grid(row=2, column=0, sticky="nsew", padx=0, pady=(0, 6))
         self.rn_mgr.grid_columnconfigure(0, weight=1)
         self._enable_scrollwheel(self.rn_mgr)
 
         self.txt = ctk.CTkTextbox(rn_group)
-        self.txt.grid(row=2, column=0, sticky="nsew", padx=0, pady=0)
+        self.txt.grid(row=3, column=0, sticky="nsew", padx=0, pady=0)
         try:
             self.txt.configure(wrap="word")
         except Exception:
             pass
+
+        self._refresh_flow_controls()
 
     def _set_preview_text(self: 'RNBuilder', txt: str):
         try:
@@ -2405,7 +2537,8 @@ def _attach_panels_to_RNBuilder():
         for w in mgr_body.winfo_children():
             w.destroy()
         
-        for i, rn in enumerate(self.rns):
+        current = self._current_rns()
+        for i, rn in enumerate(current):
             row = ctk.CTkFrame(mgr_body)
             row.grid(row=i, column=0, sticky="we", padx=4, pady=2)
             row.grid_columnconfigure(0, weight=1)
@@ -2422,11 +2555,11 @@ def _attach_panels_to_RNBuilder():
             delete.pack(side="left")
             if i == 0:
                 up.configure(state="disabled")
-            if i == len(self.rns) - 1:
+            if i == len(current) - 1:
                 down.configure(state="disabled")
 
     def _refresh_textbox(self: 'RNBuilder'):
-        content = "\n\n".join(self.rns)
+        content = "\n\n".join(self._current_rns())
         
         self.txt.configure(state="normal")
         self.txt.delete("1.0", "end")
@@ -2450,8 +2583,8 @@ def _attach_panels_to_RNBuilder():
             sel = ""
         if sel:
             payload = sel
-        elif self.rns:
-            payload = self.rns[-1]
+        elif self._current_rns():
+            payload = self._current_rns()[-1]
         else:
             payload = self.prev_box.get("1.0", "end").strip()
         if payload:
@@ -2481,13 +2614,15 @@ def _attach_panels_to_RNBuilder():
                 messagebox.showerror("Erro ao salvar", str(e))
 
     def _move_rn(self: 'RNBuilder', idx: int, delta: int):
+        rns = self._current_rns()
         j = idx + delta
-        if 0 <= idx < len(self.rns) and 0 <= j < len(self.rns):
-            self.rns[idx], self.rns[j] = self.rns[j], self.rns[idx]
+        if 0 <= idx < len(rns) and 0 <= j < len(rns):
+            rns[idx], rns[j] = rns[j], rns[idx]
             self._refresh_textbox()
 
     def _edit_rn(self: 'RNBuilder', idx: int):
-        if not (0 <= idx < len(self.rns)):
+        rns = self._current_rns()
+        if not (0 <= idx < len(rns)):
             return
         top = ctk.CTkToplevel(self)
         top.title(f"Editar RN #{idx + 1}")
@@ -2502,14 +2637,14 @@ def _attach_panels_to_RNBuilder():
         top.focus_force()
         box = ctk.CTkTextbox(top)
         box.pack(expand=True, fill="both", padx=10, pady=10)
-        box.insert("1.0", self.rns[idx])
+        box.insert("1.0", rns[idx])
         btnbar = ctk.CTkFrame(top, fg_color="transparent")
         btnbar.pack(fill="x", padx=10, pady=(0, 10))
 
         def _save():
             txt = box.get("1.0", "end").strip()
             if txt:
-                self.rns[idx] = txt
+                rns[idx] = txt
                 self._refresh_textbox()
             top.destroy()
 
@@ -2519,10 +2654,11 @@ def _attach_panels_to_RNBuilder():
         _center_window(top, width=760, height=440, parent=self)
 
     def _delete_rn(self: 'RNBuilder', idx: int):
-        if not (0 <= idx < len(self.rns)):
+        rns = self._current_rns()
+        if not (0 <= idx < len(rns)):
             return
         if messagebox.askyesno("Excluir RN", f"Remover a RN #{idx + 1}?"):
-            del self.rns[idx]
+            del rns[idx]
             self._refresh_textbox()
 
     def _update_preview(self: 'RNBuilder'):
@@ -2570,9 +2706,10 @@ def _attach_panels_to_RNBuilder():
         if not acoes:
             messagebox.showwarning("Faltam ações", "Adicione pelo menos uma ação.")
             return
-        idx = int(self.start_idx.get()) + len(self.rns)
+        current = self._current_rns()
+        idx = int(self.start_idx.get()) + len(current)
         rn = _compose_rn(idx, when, cond, acoes)
-        self.rns.append(rn)
+        current.append(rn)
         self._refresh_textbox()
 
     def _add_rn_and_prepare_opposite(self: 'RNBuilder'):
@@ -2603,7 +2740,7 @@ def _attach_panels_to_RNBuilder():
 
     def _clear_rns(self: 'RNBuilder', *, confirm=True):
         if (not confirm) or messagebox.askyesno("Limpar", "Remover todas as RNs?"):
-            self.rns.clear()
+            self._current_rns().clear()
             self._refresh_textbox()
 
     RNBuilder._build_panels = _build_panels
