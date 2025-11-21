@@ -1214,10 +1214,24 @@ class RNBuilder(ctk.CTk):
     def _ask_flow_name(self, title: str, initial: str = "") -> str:
         try:
             dialog = ctk.CTkInputDialog(text=title, title=title)
+
+            # Tenta centralizar usando nossa função global segura
+            try:
+                _center_window(dialog, width=300, height=200, parent=self)
+            except Exception:
+                pass
+
+            # Tenta preencher o valor inicial (para Renomear) com segurança
             if initial:
-                dialog.entry.delete(0, "end")
-                dialog.entry.insert(0, initial)
-            dialog._center()
+                try:
+                    # Tenta acessar _entry (privado) ou entry (publico)
+                    entry_widget = getattr(dialog, "_entry", getattr(dialog, "entry", None))
+                    if entry_widget:
+                        entry_widget.delete(0, "end")
+                        entry_widget.insert(0, initial)
+                except Exception:
+                    pass
+
             result = dialog.get_input()
         except Exception:
             result = None
@@ -2440,23 +2454,23 @@ def _attach_panels_to_RNBuilder():
         )
         self.preview_collapsible.grid(row=0, column=0, padx=(0,0), pady=(0,8), sticky="nsew")
         preview_group = self.preview_collapsible.get_inner_frame()
-        preview_group.grid_rowconfigure(1, weight=1)
+        preview_group.grid_rowconfigure(0, weight=1)
         preview_group.grid_columnconfigure(0, weight=1)
 
-        left_btnbar = ctk.CTkFrame(preview_group, fg_color="transparent")
-        left_btnbar.grid(row=0, column=0, sticky="w", padx=0, pady=(0, 6))
-        ctk.CTkButton(left_btnbar, text="Adicionar RN", command=self._add_rn, width=160).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(left_btnbar, text="Adicionar RN e preparar oposto (Sim/Não)",
-                      command=self._add_rn_and_prepare_opposite, width=300).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(left_btnbar, text="Limpar pré-visualização", command=self._clear_preview, width=200).pack(side="left")
-
         self.prev_box = SafeCTkTextbox(preview_group)
-        self.prev_box.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
+        self.prev_box.grid(row=0, column=0, sticky="nsew", padx=0, pady=(0, 8))
 
         try:
             self.prev_box.configure(wrap="word")
         except Exception:
             pass
+
+        left_btnbar = ctk.CTkFrame(preview_group, fg_color="transparent")
+        left_btnbar.grid(row=1, column=0, sticky="w", padx=0, pady=(0, 2))
+        ctk.CTkButton(left_btnbar, text="Adicionar RN", command=self._add_rn, width=160).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(left_btnbar, text="Adicionar RN e preparar oposto (Sim/Não)",
+                      command=self._add_rn_and_prepare_opposite, width=300).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(left_btnbar, text="Limpar pré-visualização", command=self._clear_preview, width=200).pack(side="left")
 
         self.rn_collapsible = CollapsibleGroup(
             container,
