@@ -63,56 +63,28 @@ def _mix_hex(color_a: str, color_b: str, factor: float) -> str:
         return color_a
 
 
-PANEL_BG = _theme_color("CTkFrame", "fg_color", ("#1b1b24", "#f1f1f6"))
-ACTION_BAR_BG = (
-    _mix_hex(PANEL_BG[0], "#ffffff", 0.06),
-    _mix_hex(PANEL_BG[1], "#000000", 0.05),
-)
-ACTION_BAR_BORDER = (
-    _mix_hex(ACTION_BAR_BG[0], "#ffffff", 0.18),
-    _mix_hex(ACTION_BAR_BG[1], "#000000", 0.14),
-)
-ACTION_BAR_TEXT = _theme_color("CTkLabel", "text_color", ("#f4f4f4", "#1a1a1a"))
-COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray45", "#b5b5c8"))
+# --- PALETA ESTILO CARD UI (DEFINIDA) ---
+PANEL_BG = _theme_color("CTkFrame", "fg_color", ("#18181b", "#f4f4f5"))
+# Cartões flutuantes (destaque sutil sobre o fundo)
+CARD_BG = (_mix_hex(PANEL_BG[0], "#ffffff", 0.08), _mix_hex(PANEL_BG[1], "#000000", 0.05))
+# Bordas de definição (essencial para o visual)
+CARD_BORDER = (_mix_hex(PANEL_BG[0], "#ffffff", 0.25), _mix_hex(PANEL_BG[1], "#000000", 0.20))
+# Fundo de Inputs e Itens da Lista (efeito "sunken")
+INPUT_BG = (_mix_hex(PANEL_BG[0], "#000000", 0.2), _mix_hex(PANEL_BG[1], "#ffffff", 0.4))
 
-# Paleta dos gerenciadores de listas
-CARD_BORDER = (
-    _mix_hex(PANEL_BG[0], "#ffffff", 0.22),
-    _mix_hex(PANEL_BG[1], "#000000", 0.18),
-)
-IMPORT_CARD_BG = (
-    _mix_hex(PANEL_BG[0], "#000000", 0.4),
-    _mix_hex(PANEL_BG[1], "#000000", 0.1),
-)
-IMPORT_BOX_BG = (
-    _mix_hex(IMPORT_CARD_BG[0], "#ffffff", 0.16),
-    _mix_hex(IMPORT_CARD_BG[1], "#ffffff", 0.12),
-)
-LIST_CARD_BG = (
-    _mix_hex(PANEL_BG[0], "#000000", 0.32),
-    _mix_hex(PANEL_BG[1], "#000000", 0.08),
-)
-ROW_BG = (
-    _mix_hex(LIST_CARD_BG[0], "#ffffff", 0.22),
-    _mix_hex(LIST_CARD_BG[1], "#ffffff", 0.14),
-)
-LIST_FOOTER_BG = (
-    _mix_hex(LIST_CARD_BG[0], "#ffffff", 0.12),
-    _mix_hex(LIST_CARD_BG[1], "#ffffff", 0.08),
-)
-BADGE_BG = (
-    _mix_hex(IMPORT_CARD_BG[0], "#ffffff", 0.28),
-    _mix_hex(IMPORT_CARD_BG[1], "#ffffff", 0.18),
-)
-BADGE_TEXT = ACTION_BAR_TEXT
-HINT_TEXT = (
-    _mix_hex(ACTION_BAR_TEXT[0], "#ffffff", 0.35),
-    _mix_hex(ACTION_BAR_TEXT[1], "#000000", 0.4),
-)
-PRIMARY_BTN = _theme_color("CTkButton", "fg_color", ("#3B8ED0", "#1F6AA5"))
+# Cores de Texto e Ação
+ACTION_BAR_TEXT = _theme_color("CTkLabel", "text_color", ("#f4f4f4", "#1a1a1a"))
+# Ajuste do fundo da Action Bar para combinar com o novo PANEL_BG
+ACTION_BAR_BG = (_mix_hex(PANEL_BG[0], "#ffffff", 0.06), _mix_hex(PANEL_BG[1], "#000000", 0.05))
+ACTION_BAR_BORDER = (_mix_hex(ACTION_BAR_BG[0], "#ffffff", 0.18), _mix_hex(ACTION_BAR_BG[1], "#000000", 0.14))
+
+BADGE_BG = PRIMARY_BTN = _theme_color("CTkButton", "fg_color", ("#3B8ED0", "#1F6AA5"))
+BADGE_TEXT = ("#ffffff", "#ffffff")
+HINT_TEXT = ("gray60", "gray40")
 PRIMARY_HOVER = _theme_color("CTkButton", "hover_color", ("#36719F", "#144870"))
-DANGER_BG = ("#b8474c", "#ff6b6b")
+DANGER_BG = ("#2e2e2e", "#ff6b6b")
 DANGER_HOVER = ("#c9585c", "#ff8080")
+COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray45", "#b5b5c8"))
 
 
 def _center_window(win: tk.Toplevel, *, width: Optional[int] = None, height: Optional[int] = None, parent=None):
@@ -537,9 +509,9 @@ class MemManagerTab(ctk.CTkFrame):
 
         import_card = ctk.CTkFrame(
             self,
-            corner_radius=14,
-            fg_color=IMPORT_CARD_BG,
-            border_width=1,
+            corner_radius=10,
+            fg_color=CARD_BG,
+            border_width=2,
             border_color=CARD_BORDER,
         )
         if side_by_side:
@@ -559,10 +531,10 @@ class MemManagerTab(ctk.CTkFrame):
         self.import_box = ctk.CTkTextbox(
             import_card,
             height=box_height,
-            corner_radius=10,
+            corner_radius=8,
             border_width=1,
             border_color=CARD_BORDER,
-            fg_color=IMPORT_BOX_BG,
+            fg_color=INPUT_BG,
         )
         self.import_box.grid(row=1, column=0, sticky="nsew", padx=18, pady=(0, 12))
         self.import_box.configure(font=ctk.CTkFont(size=12))
@@ -591,9 +563,9 @@ class MemManagerTab(ctk.CTkFrame):
 
         list_card = ctk.CTkFrame(
             self,
-            corner_radius=14,
-            fg_color=LIST_CARD_BG,
-            border_width=1,
+            corner_radius=10,
+            fg_color=CARD_BG,
+            border_width=2,
             border_color=CARD_BORDER,
         )
         if side_by_side:
@@ -609,12 +581,12 @@ class MemManagerTab(ctk.CTkFrame):
             font=ctk.CTkFont(size=14, weight="bold"),
         ).grid(row=0, column=0, sticky="w", padx=24, pady=(16, 6))
 
-        self.scroll_frame = ctk.CTkScrollableFrame(list_card, fg_color=LIST_CARD_BG)
+        self.scroll_frame = ctk.CTkScrollableFrame(list_card, fg_color=CARD_BG)
         self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 12))
         self.scroll_frame.grid_columnconfigure(0, weight=1)
         self.body = scrollable_body(self.scroll_frame)
         try:
-            self.body.configure(fg_color=LIST_CARD_BG)
+            self.body.configure(fg_color=CARD_BG)
         except Exception:
             pass
         self.body.grid_columnconfigure(0, weight=1)
@@ -628,9 +600,9 @@ class MemManagerTab(ctk.CTkFrame):
 
         footer = ctk.CTkFrame(
             list_card,
-            fg_color=LIST_FOOTER_BG,
-            corner_radius=12,
-            border_width=1,
+            fg_color=CARD_BG,
+            corner_radius=10,
+            border_width=2,
             border_color=CARD_BORDER,
         )
         footer.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 18))
@@ -642,7 +614,7 @@ class MemManagerTab(ctk.CTkFrame):
             corner_radius=8,
             border_width=1,
             border_color=CARD_BORDER,
-            fg_color=ROW_BG,
+            fg_color=INPUT_BG,
             font=ctk.CTkFont(size=13),
         )
         self.new_entry.grid(row=0, column=0, sticky="ew", padx=(12, 12), pady=14)
@@ -689,27 +661,28 @@ class MemManagerTab(ctk.CTkFrame):
         for i, item in enumerate(list(self.mem_list)):
             row = ctk.CTkFrame(
                 self.body,
-                fg_color=ROW_BG,
-                corner_radius=12,
+                fg_color=INPUT_BG,
+                corner_radius=6,
                 border_width=1,
                 border_color=CARD_BORDER,
             )
-            row.grid(row=i, column=0, sticky="ew", pady=(0, 12))
+            row.grid(row=i, column=0, sticky="ew", pady=(0, 12), padx=2)
             row.grid_columnconfigure(0, weight=1)
+            row.grid_columnconfigure(1, weight=0)
 
             entry = ctk.CTkEntry(
                 row,
-                corner_radius=8,
+                corner_radius=6,
                 border_width=1,
                 border_color=CARD_BORDER,
-                fg_color=ROW_BG,
+                fg_color=INPUT_BG,
                 font=ctk.CTkFont(size=13),
             )
             entry.insert(0, item)
-            entry.grid(row=0, column=0, sticky="ew", padx=(16, 10), pady=12)
+            entry.grid(row=0, column=0, sticky="ew", padx=(12, 10), pady=10)
 
             btn_holder = ctk.CTkFrame(row, fg_color="transparent")
-            btn_holder.grid(row=0, column=1, sticky="e", padx=(0, 16), pady=12)
+            btn_holder.grid(row=0, column=1, sticky="e", padx=(0, 12), pady=10)
 
             save_btn = ctk.CTkButton(
                 btn_holder,
