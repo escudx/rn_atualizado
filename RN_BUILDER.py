@@ -2799,9 +2799,11 @@ _attach_panels_to_RNBuilder()
 if __name__ == "__main__":
     try:
         app = RNBuilder()
-        if not hasattr(app, 'builder_container'):
+        
+        # Constrói a interface inicial
+        if hasattr(app, 'builder_container'):
             app._build_rule()
-        if not hasattr(app, 'prev_box'):
+        if hasattr(app, 'prev_box'):
             app._build_panels()
         
         app._refresh_gatilho_fields()
@@ -2809,6 +2811,16 @@ if __name__ == "__main__":
         app._update_preview()
         app._refresh_textbox()
         
+        # --- SPLASH SCREEN CLOSE ---
+        # Fecha a imagem de carregamento apenas se estiver rodando como .EXE
+        try:
+            import pyi_splash
+            if pyi_splash.is_alive():
+                pyi_splash.close()
+        except ImportError:
+            pass
+        # ---------------------------
+
         app.mainloop()
     except Exception as e:
         try:
