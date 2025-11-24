@@ -2801,10 +2801,8 @@ if __name__ == "__main__":
         app = RNBuilder()
         
         # Constrói a interface inicial
-        if hasattr(app, 'builder_container'):
-            app._build_rule()
-        if hasattr(app, 'prev_box'):
-            app._build_panels()
+        app._build_rule()
+        app._build_panels()
         
         app._refresh_gatilho_fields()
         app._ensure_min_builder_rows()
