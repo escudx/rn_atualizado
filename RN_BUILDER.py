@@ -19,9 +19,16 @@ def _enable_dpi_awareness():
 
 
 _enable_dpi_awareness()
-ctk.deactivate_automatic_dpi_awareness()
-ctk.set_window_scaling(1.0)
-ctk.set_widget_scaling(1.0)
+try:
+    if hasattr(ctk, "deactivate_automatic_dpi_awareness"):
+        ctk.deactivate_automatic_dpi_awareness()
+except Exception:
+    pass
+try:
+    ctk.set_window_scaling(1.0)
+    ctk.set_widget_scaling(1.0)
+except Exception:
+    pass
 
 
 class SafeCTkTextbox(ctk.CTkTextbox):
