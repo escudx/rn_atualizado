@@ -6,21 +6,22 @@ import customtkinter as ctk
 
 
 def _enable_dpi_awareness():
-    """Melhora a compatibilidade com múltiplos monitores no Windows."""
-    if not sys.platform.startswith("win"):
-        return
     try:
         import ctypes
-
-        try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        except AttributeError:
-            ctypes.windll.user32.SetProcessDPIAware()
+        # Tenta definir DPI Awareness por Monitor (mais moderno, evita o bug de transparência)
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
-        pass
+        try:
+            import ctypes
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
 
 
 _enable_dpi_awareness()
+ctk.deactivate_automatic_dpi_awareness()
+ctk.set_window_scaling(1.0)
+ctk.set_widget_scaling(1.0)
 
 
 class SafeCTkTextbox(ctk.CTkTextbox):
@@ -1088,6 +1089,8 @@ class LinhaAcao(ctk.CTkFrame):
 class RNBuilder(ctk.CTk):
     def __init__(self):
         super().__init__()
+        # Força regeneração do desenho ao trocar de tela
+        self.bind("<Configure>", lambda e: self.update_idletasks() if e.widget == self else None)
         self.title("RN Builder — Montador de Regras")
         self._apply_initial_geometry()
         self.grid_rowconfigure(0, weight=0)
