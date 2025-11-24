@@ -1124,8 +1124,22 @@ class RNBuilder(ctk.CTk):
         self.content = ctk.CTkFrame(self, fg_color="transparent")
         self.content.grid(row=1, column=0, sticky="nsew")
         self.content.grid_rowconfigure(0, weight=1)
-        self.content.grid_columnconfigure(0, weight=2, minsize=520)
-        self.content.grid_columnconfigure(1, weight=3, minsize=520)
+
+        # Substitui o grid fixo por um painel redimensionável (splitter)
+        self.paned = tk.PanedWindow(
+            self.content,
+            orient="horizontal",
+            sashwidth=6,
+            bg="#2b2b2b",
+            bd=0,
+        )
+        self.paned.pack(fill="both", expand=True, padx=6, pady=6)
+
+        self.left_pane = ctk.CTkFrame(self.paned, fg_color="transparent")
+        self.right_pane = ctk.CTkFrame(self.paned, fg_color="transparent")
+
+        self.paned.add(self.left_pane, minsize=450, stretch="always")
+        self.paned.add(self.right_pane, minsize=450, stretch="always")
 
         self._bind_shortcuts()
 
@@ -1832,9 +1846,9 @@ class RNBuilder(ctk.CTk):
 
 def _attach_builder_to_RNBuilder():
     def _build_rule(self: 'RNBuilder'):
-        parent = getattr(self, "content", self)
+        parent = self.left_pane
         self.builder_scroll = ctk.CTkScrollableFrame(parent, fg_color="transparent")
-        self.builder_scroll.grid(row=0, column=0, sticky="nsew", padx=(10, 6), pady=6)
+        self.builder_scroll.pack(fill="both", expand=True, padx=(10, 6), pady=6)
         self.builder_scroll.grid_columnconfigure(0, weight=1)
         self._enable_scrollwheel(self.builder_scroll)
 
@@ -2447,15 +2461,13 @@ _attach_builder_to_RNBuilder()
 
 def _attach_panels_to_RNBuilder():
     def _build_panels(self: 'RNBuilder'):
-        parent = getattr(self, "content", self)
-        container = ctk.CTkFrame(parent)
-        container.grid(row=0, column=1, sticky="nsew", padx=(6, 10), pady=6)
-        container.grid_columnconfigure(0, weight=1)
-        container.grid_rowconfigure(0, weight=4)
-        container.grid_rowconfigure(1, weight=5)
+        parent = self.right_pane
+        parent.grid_columnconfigure(0, weight=1)
+        parent.grid_rowconfigure(0, weight=4)
+        parent.grid_rowconfigure(1, weight=5)
 
         self.preview_collapsible = CollapsibleGroup(
-            container,
+            parent,
             text="Pré-visualização da RN atual",
             start_expanded=True
         )
@@ -2480,7 +2492,7 @@ def _attach_panels_to_RNBuilder():
         ctk.CTkButton(left_btnbar, text="Limpar pré-visualização", command=self._clear_preview, width=200).pack(side="left")
 
         self.rn_collapsible = CollapsibleGroup(
-            container,
+            parent,
             text="RNs (lista final)",
             start_expanded=True
         )
