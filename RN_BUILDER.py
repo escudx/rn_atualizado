@@ -21,6 +21,19 @@ def _enable_dpi_awareness():
 _enable_dpi_awareness()
 
 
+def _apply_dark_title_bar(win):
+    """Força a barra de título do Windows a ficar escura."""
+    try:
+        import ctypes
+        win.update_idletasks()
+        hwnd = ctypes.windll.user32.GetParent(win.winfo_id())
+        # 20 = DWMWA_USE_IMMERSIVE_DARK_MODE
+        value = ctypes.c_int(1)
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(hwnd, 20, ctypes.byref(value), 4)
+    except Exception:
+        pass
+
+
 class SafeCTkTextbox(ctk.CTkTextbox):
     _FORBIDDEN_TAG_OPTIONS = {"font", "ctk_font"}
 
@@ -83,42 +96,26 @@ COMBO_BORDER = _theme_color("CTkEntry", "border_color", ("gray45", "#b5b5c8"))
 INPUT_BG = (_mix_hex(PANEL_BG[0], "#000000", 0.2), _mix_hex(PANEL_BG[1], "#ffffff", 0.4))
 
 
-def _center_window(win: tk.Toplevel, *, width: Optional[int] = None, height: Optional[int] = None, parent=None):
+def _center_window(win, width=None, height=None, parent=None):
     try:
-        if width and height:
-            win.geometry(f"{width}x{height}")
-
         win.update_idletasks()
+        w = width or win.winfo_reqwidth()
+        h = height or win.winfo_reqheight()
 
-        w = width or win.winfo_width()
-        h = height or win.winfo_height()
-        if w <= 1:
-            w = width or win.winfo_reqwidth()
-        if h <= 1:
-            h = height or win.winfo_reqheight()
+        # Tenta centralizar em relação ao pai (monitor correto)
+        if parent:
+            x = parent.winfo_rootx() + (parent.winfo_width() // 2) - (w // 2)
+            y = parent.winfo_rooty() + (parent.winfo_height() // 2) - (h // 2)
+        else:
+            # Fallback para o centro da tela principal
+            ws = win.winfo_screenwidth()
+            hs = win.winfo_screenheight()
+            x = (ws // 2) - (w // 2)
+            y = (hs // 2) - (h // 2)
 
-        if parent is None:
-            try:
-                parent = win.master if win.master else win.winfo_toplevel()
-            except Exception:
-                parent = None
-
-        if parent is not None:
-            try:
-                parent.update_idletasks()
-                px = parent.winfo_rootx()
-                py = parent.winfo_rooty()
-                pw = parent.winfo_width()
-                ph = parent.winfo_height()
-                x = px + max((pw - w) // 2, 0)
-                y = py + max((ph - h) // 2, 0)
-            except Exception:
-                parent = None
-        if parent is None:
-            sw = win.winfo_screenwidth()
-            sh = win.winfo_screenheight()
-            x = max((sw - w) // 2, 0)
-            y = max((sh - h) // 2, 0)
+        # Garante que não fique fora da tela (coordenadas negativas)
+        x = max(0, x)
+        y = max(0, y)
 
         win.geometry(f"{w}x{h}+{x}+{y}")
     except Exception:
@@ -1230,6 +1227,10 @@ class RNBuilder(ctk.CTk):
     def _ask_flow_name(self, title: str, initial: str = "") -> str:
         try:
             dialog = ctk.CTkInputDialog(text=title, title=title)
+            try:
+                _apply_dark_title_bar(dialog)
+            except Exception:
+                pass
 
             # Tenta centralizar usando nossa função global segura
             try:
@@ -1441,6 +1442,10 @@ class RNBuilder(ctk.CTk):
 
         top = ctk.CTkToplevel(self)
         top.title("Gerenciador de Listas")
+        try:
+            _apply_dark_title_bar(top)
+        except Exception:
+            pass
         top.transient(self)
         top.grab_set()
         self._mem_manager_window = top
@@ -2654,6 +2659,10 @@ def _attach_panels_to_RNBuilder():
             return
         top = ctk.CTkToplevel(self)
         top.title(f"Editar RN #{idx + 1}")
+        try:
+            _apply_dark_title_bar(top)
+        except Exception:
+            pass
         top.transient(self)
         top.lift()
         try:
