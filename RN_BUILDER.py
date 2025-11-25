@@ -102,22 +102,24 @@ def _center_window(win, width=None, height=None, parent=None):
         w = width or win.winfo_reqwidth()
         h = height or win.winfo_reqheight()
 
-        # Tenta centralizar em relação ao pai (monitor correto)
         if parent:
             x = parent.winfo_rootx() + (parent.winfo_width() // 2) - (w // 2)
             y = parent.winfo_rooty() + (parent.winfo_height() // 2) - (h // 2)
         else:
-            # Fallback para o centro da tela principal
             ws = win.winfo_screenwidth()
             hs = win.winfo_screenheight()
             x = (ws // 2) - (w // 2)
             y = (hs // 2) - (h // 2)
 
-        # Garante que não fique fora da tela (coordenadas negativas)
         x = max(0, x)
         y = max(0, y)
 
         win.geometry(f"{w}x{h}+{x}+{y}")
+
+        # --- CORREÇÃO APLICADA AQUI ---
+        # Força a barra escura após o posicionamento final
+        _apply_dark_title_bar(win)
+        # ------------------------------
     except Exception:
         pass
 
