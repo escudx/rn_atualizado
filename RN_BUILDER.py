@@ -2144,37 +2144,37 @@ def _attach_builder_to_RNBuilder():
 
     def _prune_closing_actions(self: 'RNBuilder'):
         keywords = ("encerrar", "retornar", "retomar")
-        to_remove = []
+        rows_kept = []
 
-        for row in list(getattr(self, "acao_rows", [])):
+        for widget in list(_winfo_children_safe(getattr(self, "frm_acoes_body", self))):
+            if not isinstance(widget, LinhaAcao):
+                continue
+
             try:
-                pieces = [
-                    (getattr(row, "var_tipo", tk.StringVar(value=""))).get(),
-                    (getattr(row, "var_texto", tk.StringVar(value=""))).get(),
-                    (getattr(row, "var_fluxo", tk.StringVar(value=""))).get(),
-                    (getattr(row, "var_ret_tarefa", tk.StringVar(value=""))).get(),
-                ]
-                combined = " ".join(pieces).lower()
+                combined = " ".join(
+                    [
+                        (getattr(widget, "var_tipo", tk.StringVar(value=""))).get(),
+                        (getattr(widget, "var_texto", tk.StringVar(value=""))).get(),
+                        (getattr(widget, "var_fluxo", tk.StringVar(value=""))).get(),
+                        (getattr(widget, "var_ret_tarefa", tk.StringVar(value=""))).get(),
+                    ]
+                ).lower()
             except Exception:
                 combined = ""
 
             if any(k in combined for k in keywords):
-                to_remove.append(row)
+                try:
+                    widget.destroy()
+                except Exception:
+                    pass
+                continue
 
-        for row in to_remove:
-            try:
-                row.destroy()
-            except Exception:
-                pass
-            try:
-                self.acao_rows.remove(row)
-            except ValueError:
-                pass
+            rows_kept.append(widget)
 
-        if to_remove:
-            self._relayout_acao_rows()
-            self.after(50, self._ensure_min_builder_rows)
-            self.after(100, self._update_preview)
+        self.acao_rows = rows_kept
+        self._relayout_acao_rows()
+        self.after(50, self._ensure_min_builder_rows)
+        self.after(50, self._update_preview)
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
@@ -2809,7 +2809,7 @@ def _attach_panels_to_RNBuilder():
         rn = _compose_rn(idx, when, cond, acoes)
         current.append(rn)
         self._refresh_textbox()
-        self.after(10, self._prune_closing_actions)
+        self.after(20, self._prune_closing_actions)
 
     def _add_rn_and_prepare_opposite(self: 'RNBuilder'):
         self._add_rn()
