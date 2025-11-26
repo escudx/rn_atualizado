@@ -2144,7 +2144,7 @@ def _attach_builder_to_RNBuilder():
 
     def _prune_closing_actions(self: 'RNBuilder'):
         keywords = ("encerrar", "retornar", "retomar")
-        rows_kept = []
+        rows_kept: list[LinhaAcao] = []
 
         for widget in list(_winfo_children_safe(getattr(self, "frm_acoes_body", self))):
             if not isinstance(widget, LinhaAcao):
@@ -2170,12 +2170,14 @@ def _attach_builder_to_RNBuilder():
 
         self.acao_rows = rows_kept
         self._relayout_acao_rows()
-        try:
-            self.update_idletasks()
-        except Exception:
-            pass
-        self.after(10, self._ensure_min_builder_rows)
-        self.after(30, self._update_preview)
+
+        def _after_cleanup():
+            try:
+                self._ensure_min_builder_rows()
+            finally:
+                self._update_preview()
+
+        self.after(30, _after_cleanup)
         self.after(120, self._update_preview)
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
@@ -2811,9 +2813,8 @@ def _attach_panels_to_RNBuilder():
         rn = _compose_rn(idx, when, cond, acoes)
         current.append(rn)
         self._refresh_textbox()
-        self._prune_closing_actions()
-        self.after(50, self._prune_closing_actions)
-        self.after(150, self._prune_closing_actions)
+        self.after(5, self._prune_closing_actions)
+        self.after(80, self._prune_closing_actions)
 
     def _add_rn_and_prepare_opposite(self: 'RNBuilder'):
         self._add_rn()
@@ -2838,8 +2839,7 @@ def _attach_panels_to_RNBuilder():
                         self.var_resposta.set('Sim')
         except Exception:
             pass
-        self._prune_closing_actions()
-        self.after(50, self._prune_closing_actions)
+        self.after(10, self._prune_closing_actions)
         self.after(150, self._prune_closing_actions)
 
     def _clear_rns(self: 'RNBuilder', *, confirm=True):
