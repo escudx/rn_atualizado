@@ -2150,17 +2150,14 @@ def _attach_builder_to_RNBuilder():
             if not isinstance(widget, LinhaAcao):
                 continue
 
-            try:
-                combined = " ".join(
-                    [
-                        (getattr(widget, "var_tipo", tk.StringVar(value=""))).get(),
-                        (getattr(widget, "var_texto", tk.StringVar(value=""))).get(),
-                        (getattr(widget, "var_fluxo", tk.StringVar(value=""))).get(),
-                        (getattr(widget, "var_ret_tarefa", tk.StringVar(value=""))).get(),
-                    ]
-                ).lower()
-            except Exception:
-                combined = ""
+            combined = "".join(
+                [
+                    getattr(getattr(widget, "var_tipo", None), "get", lambda: "")(),
+                    getattr(getattr(widget, "var_texto", None), "get", lambda: "")(),
+                    getattr(getattr(widget, "var_fluxo", None), "get", lambda: "")(),
+                    getattr(getattr(widget, "var_ret_tarefa", None), "get", lambda: "")(),
+                ]
+            ).lower()
 
             if any(k in combined for k in keywords):
                 try:
@@ -2173,7 +2170,6 @@ def _attach_builder_to_RNBuilder():
 
         self.acao_rows = rows_kept
         self._relayout_acao_rows()
-        self.after(50, self._ensure_min_builder_rows)
         self.after(50, self._update_preview)
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
