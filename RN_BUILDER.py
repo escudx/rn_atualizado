@@ -2171,10 +2171,12 @@ def _attach_builder_to_RNBuilder():
         self.acao_rows = rows_kept
         self._relayout_acao_rows()
         try:
-            self._ensure_min_builder_rows()
+            self.update_idletasks()
         except Exception:
             pass
-        self.after(25, self._update_preview)
+        self.after(10, self._ensure_min_builder_rows)
+        self.after(30, self._update_preview)
+        self.after(120, self._update_preview)
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
@@ -2811,6 +2813,7 @@ def _attach_panels_to_RNBuilder():
         self._refresh_textbox()
         self._prune_closing_actions()
         self.after(50, self._prune_closing_actions)
+        self.after(150, self._prune_closing_actions)
 
     def _add_rn_and_prepare_opposite(self: 'RNBuilder'):
         self._add_rn()
@@ -2837,6 +2840,7 @@ def _attach_panels_to_RNBuilder():
             pass
         self._prune_closing_actions()
         self.after(50, self._prune_closing_actions)
+        self.after(150, self._prune_closing_actions)
 
     def _clear_rns(self: 'RNBuilder', *, confirm=True):
         if (not confirm) or messagebox.askyesno("Limpar", "Remover todas as RNs?"):
