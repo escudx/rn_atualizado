@@ -2143,15 +2143,27 @@ def _attach_builder_to_RNBuilder():
                 pass
 
     def _prune_closing_actions(self: 'RNBuilder'):
+        """Limpa ações especiais após salvar uma RN.
+
+        Remove "Encerrar Fluxo" (total/parcial) e "Retomar Tarefa" para que
+        esses tipos não se propaguem automaticamente para a próxima regra.
+        """
         removed = False
         for row in list(getattr(self, 'acao_rows', [])):
             try:
-                if row.var_tipo.get().startswith("Encerrar Fluxo"):
-                    row.destroy()
-                    self.acao_rows.remove(row)
-                    removed = True
+                tipo = row.var_tipo.get()
             except Exception:
                 continue
+            if tipo.startswith("Encerrar Fluxo") or tipo == "Retomar Tarefa":
+                try:
+                    row.destroy()
+                except Exception:
+                    pass
+                try:
+                    self.acao_rows.remove(row)
+                except ValueError:
+                    pass
+                removed = True
         if removed:
             self._relayout_acao_rows()
             self.after_idle(self._ensure_min_builder_rows)
@@ -2492,8 +2504,8 @@ def _attach_panels_to_RNBuilder():
     def _build_panels(self: 'RNBuilder'):
         parent = self.right_pane
         parent.grid_columnconfigure(0, weight=1)
-        parent.grid_rowconfigure(0, weight=35)
-        parent.grid_rowconfigure(1, weight=65)
+        parent.grid_rowconfigure(0, weight=35, minsize=220)
+        parent.grid_rowconfigure(1, weight=65, minsize=260)
 
         self.preview_collapsible = CollapsibleGroup(
             parent,
@@ -2502,7 +2514,7 @@ def _attach_panels_to_RNBuilder():
         )
         self.preview_collapsible.grid(row=0, column=0, padx=(0,0), pady=(0,8), sticky="nsew")
         preview_group = self.preview_collapsible.get_inner_frame()
-        preview_group.grid_rowconfigure(0, weight=1)
+        preview_group.grid_rowconfigure(0, weight=1, minsize=150)
         preview_group.grid_columnconfigure(0, weight=1)
 
         self.prev_box = SafeCTkTextbox(preview_group)
