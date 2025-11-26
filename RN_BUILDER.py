@@ -2169,16 +2169,21 @@ def _attach_builder_to_RNBuilder():
             rows_kept.append(widget)
 
         self.acao_rows = rows_kept
-        self._relayout_acao_rows()
 
-        def _after_cleanup():
-            try:
-                self._ensure_min_builder_rows()
-            finally:
-                self._update_preview()
+        try:
+            self.update_idletasks()
+        except Exception:
+            pass
 
-        self.after(30, _after_cleanup)
-        self.after(120, self._update_preview)
+        try:
+            self._relayout_acao_rows()
+        except Exception:
+            pass
+
+        try:
+            self._ensure_min_builder_rows()
+        finally:
+            self._update_preview()
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
@@ -2813,8 +2818,7 @@ def _attach_panels_to_RNBuilder():
         rn = _compose_rn(idx, when, cond, acoes)
         current.append(rn)
         self._refresh_textbox()
-        self.after(5, self._prune_closing_actions)
-        self.after(80, self._prune_closing_actions)
+        self._prune_closing_actions()
 
     def _add_rn_and_prepare_opposite(self: 'RNBuilder'):
         self._add_rn()
@@ -2839,8 +2843,7 @@ def _attach_panels_to_RNBuilder():
                         self.var_resposta.set('Sim')
         except Exception:
             pass
-        self.after(10, self._prune_closing_actions)
-        self.after(150, self._prune_closing_actions)
+        self._prune_closing_actions()
 
     def _clear_rns(self: 'RNBuilder', *, confirm=True):
         if (not confirm) or messagebox.askyesno("Limpar", "Remover todas as RNs?"):
