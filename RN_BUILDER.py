@@ -2143,12 +2143,21 @@ def _attach_builder_to_RNBuilder():
                 pass
 
     def _prune_closing_actions(self: 'RNBuilder'):
-        """Remove todas as ações atuais como se o usuário clicasse em “Limpar ações”."""
+        """Limpa todas as ações visíveis, imitando o botão “Limpar ações”."""
         try:
-            self._clear_actions(confirm=False)
-        except Exception:
-            pass
-        try:
+            # Destrói qualquer LinhaAcao presente no container, mesmo que self.acao_rows esteja dessincronizado.
+            for widget in list(getattr(self, 'frm_acoes_body', tk.Frame()).winfo_children()):
+                if isinstance(widget, LinhaAcao):
+                    try:
+                        widget.destroy()
+                    except Exception:
+                        pass
+
+            # Zera a lista lógica e garante uma linha inicial limpa.
+            if hasattr(self, 'acao_rows'):
+                self.acao_rows.clear()
+            self._ensure_min_builder_rows()
+            self._relayout_acao_rows()
             self._update_preview()
         except Exception:
             pass
