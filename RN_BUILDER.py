@@ -2143,9 +2143,8 @@ def _attach_builder_to_RNBuilder():
                 pass
 
     def _prune_closing_actions(self: 'RNBuilder'):
-        """Remove qualquer ação de encerrar/retornar/retomar antes da próxima RN."""
         keywords = ("encerrar", "retornar", "retomar")
-        to_remove: list[LinhaAcao] = []
+        to_remove = []
 
         for row in list(getattr(self, "acao_rows", [])):
             try:
@@ -2174,8 +2173,8 @@ def _attach_builder_to_RNBuilder():
 
         if to_remove:
             self._relayout_acao_rows()
-            self._ensure_min_builder_rows()
-            self._update_preview()
+            self.after(50, self._ensure_min_builder_rows)
+            self.after(100, self._update_preview)
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
@@ -2810,7 +2809,7 @@ def _attach_panels_to_RNBuilder():
         rn = _compose_rn(idx, when, cond, acoes)
         current.append(rn)
         self._refresh_textbox()
-        self._prune_closing_actions()
+        self.after(10, self._prune_closing_actions)
 
     def _add_rn_and_prepare_opposite(self: 'RNBuilder'):
         self._add_rn()
@@ -2835,7 +2834,7 @@ def _attach_panels_to_RNBuilder():
                         self.var_resposta.set('Sim')
         except Exception:
             pass
-        self._prune_closing_actions()
+        self.after(200, self._prune_closing_actions)
 
     def _clear_rns(self: 'RNBuilder', *, confirm=True):
         if (not confirm) or messagebox.askyesno("Limpar", "Remover todas as RNs?"):
