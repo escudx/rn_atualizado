@@ -2143,36 +2143,17 @@ def _attach_builder_to_RNBuilder():
                 pass
 
     def _prune_closing_actions(self: 'RNBuilder'):
-        """Limpa ações especiais após salvar uma RN.
-
-        Remove "Encerrar Fluxo" (total/parcial) e "Retomar Tarefa" para que
-        esses tipos não se propaguem automaticamente para a próxima regra.
-        """
+        """Remove ações de encerrar/retornar para que não vazem para a próxima RN."""
+        keywords = ("encerrar fluxo", "retornar a tarefa", "retomar tarefa")
         removed = False
-        for row in list(getattr(self, 'acao_rows', [])):
+
+        for row in list(getattr(self, "acao_rows", [])):
             try:
-                tipo = (row.var_tipo.get() or "").strip()
-                texto = (row.var_texto.get() or "").strip()
+                tipo_norm = (row.var_tipo.get() or "").lower()
             except Exception:
                 continue
 
-            tipo_norm = tipo.lower()
-            texto_norm = texto.lower()
-            is_closing_text = texto_norm in {
-                _t("closing_partial").lower(),
-                _t("closing_total").lower(),
-            } or (
-                "encerrar" in texto_norm and "fluxo" in texto_norm
-            )
-            is_return_text = "retornar" in texto_norm and "tarefa" in texto_norm
-
-            if (
-                tipo_norm.startswith("encerrar fluxo")
-                or tipo_norm.startswith("retornar a tarefa")
-                or tipo_norm.startswith("retomar tarefa")
-                or is_closing_text
-                or is_return_text
-            ):
+            if any(k in tipo_norm for k in keywords):
                 try:
                     row.destroy()
                 except Exception:
@@ -2182,6 +2163,7 @@ def _attach_builder_to_RNBuilder():
                 except ValueError:
                     pass
                 removed = True
+
         if removed:
             self._relayout_acao_rows()
             try:
@@ -2846,9 +2828,6 @@ def _attach_panels_to_RNBuilder():
                         self.var_resposta.set('Sim')
         except Exception:
             pass
-        self._destroy_rows(getattr(self, 'acao_rows', []))
-        if hasattr(self, '_ensure_min_builder_rows'):
-            self._ensure_min_builder_rows()
         self._prune_closing_actions()
         self._update_preview()
 
