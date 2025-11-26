@@ -2144,32 +2144,31 @@ def _attach_builder_to_RNBuilder():
 
     def _prune_closing_actions(self: 'RNBuilder'):
         """Remove ações de encerrar/retornar para que não vazem para a próxima RN."""
-        keywords = ("encerrar fluxo", "retornar a tarefa", "retomar tarefa")
-        removed = False
+        keywords = ("encerrar", "retornar", "retomar")
+        rows = list(getattr(self, "acao_rows", []))
+        rows_to_remove = []
 
-        for row in list(getattr(self, "acao_rows", [])):
+        for row in rows:
             try:
                 tipo_norm = (row.var_tipo.get() or "").lower()
             except Exception:
                 continue
-
             if any(k in tipo_norm for k in keywords):
-                try:
-                    row.destroy()
-                except Exception:
-                    pass
-                try:
-                    self.acao_rows.remove(row)
-                except ValueError:
-                    pass
-                removed = True
+                rows_to_remove.append(row)
 
-        if removed:
-            self._relayout_acao_rows()
+        for row in rows_to_remove:
             try:
-                self._ensure_min_builder_rows()
+                row.destroy()
             except Exception:
                 pass
+            try:
+                self.acao_rows.remove(row)
+            except ValueError:
+                pass
+
+        if rows_to_remove:
+            self._relayout_acao_rows()
+            self._update_preview()
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
@@ -2813,8 +2812,10 @@ def _attach_panels_to_RNBuilder():
             if self.var_gatilho_tipo.get() == 'Em TAREFA se CAMPO for RESPOSTA':
                 lang = get_lang()
                 resp = (self.var_resposta.get() or '').strip().lower()
+
                 def _norm_es(x: str) -> str:
                     return x.replace('í', 'i').replace('Í', 'i')
+
                 if lang == 'es':
                     r = _norm_es(resp)
                     if r == 'si':
@@ -2828,6 +2829,7 @@ def _attach_panels_to_RNBuilder():
                         self.var_resposta.set('Sim')
         except Exception:
             pass
+
         self._prune_closing_actions()
         self._update_preview()
 
