@@ -2143,19 +2143,22 @@ def _attach_builder_to_RNBuilder():
                 pass
 
     def _prune_closing_actions(self: 'RNBuilder'):
-        """Remove ações de encerramento/retorno/retomada sem corromper a lista."""
+        """Remove qualquer ação de encerrar/retornar/retomar antes da próxima RN."""
         keywords = ("encerrar", "retornar", "retomar")
-        to_remove = []
+        to_remove: list[LinhaAcao] = []
 
         for row in list(getattr(self, "acao_rows", [])):
             try:
-                tipo_norm = (row.var_tipo.get() or "").lower()
-                texto_norm = (getattr(row, "var_texto", tk.StringVar(value="")).get() or "").lower()
-                fluxo_norm = (getattr(row, "var_fluxo", tk.StringVar(value="")).get() or "").lower()
+                pieces = [
+                    (getattr(row, "var_tipo", tk.StringVar(value=""))).get(),
+                    (getattr(row, "var_texto", tk.StringVar(value=""))).get(),
+                    (getattr(row, "var_fluxo", tk.StringVar(value=""))).get(),
+                    (getattr(row, "var_ret_tarefa", tk.StringVar(value=""))).get(),
+                ]
+                combined = " ".join(pieces).lower()
             except Exception:
-                continue
+                combined = ""
 
-            combined = f"{tipo_norm} {texto_norm} {fluxo_norm}"
             if any(k in combined for k in keywords):
                 to_remove.append(row)
 
@@ -2169,9 +2172,10 @@ def _attach_builder_to_RNBuilder():
             except ValueError:
                 pass
 
-        self._relayout_acao_rows()
-        self._ensure_min_builder_rows()
-        self._update_preview()
+        if to_remove:
+            self._relayout_acao_rows()
+            self._ensure_min_builder_rows()
+            self._update_preview()
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
