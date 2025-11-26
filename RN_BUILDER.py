@@ -2143,47 +2143,15 @@ def _attach_builder_to_RNBuilder():
                 pass
 
     def _prune_closing_actions(self: 'RNBuilder'):
-        keywords = ("encerrar", "retornar", "retomar")
-        rows_kept: list[LinhaAcao] = []
-
-        for widget in list(_winfo_children_safe(getattr(self, "frm_acoes_body", self))):
-            if not isinstance(widget, LinhaAcao):
-                continue
-
-            combined = "".join(
-                [
-                    getattr(getattr(widget, "var_tipo", None), "get", lambda: "")(),
-                    getattr(getattr(widget, "var_texto", None), "get", lambda: "")(),
-                    getattr(getattr(widget, "var_fluxo", None), "get", lambda: "")(),
-                    getattr(getattr(widget, "var_ret_tarefa", None), "get", lambda: "")(),
-                ]
-            ).lower()
-
-            if any(k in combined for k in keywords):
-                try:
-                    widget.destroy()
-                except Exception:
-                    pass
-                continue
-
-            rows_kept.append(widget)
-
-        self.acao_rows = rows_kept
-
+        """Remove todas as ações atuais como se o usuário clicasse em “Limpar ações”."""
         try:
-            self.update_idletasks()
+            self._clear_actions(confirm=False)
         except Exception:
             pass
-
         try:
-            self._relayout_acao_rows()
-        except Exception:
-            pass
-
-        try:
-            self._ensure_min_builder_rows()
-        finally:
             self._update_preview()
+        except Exception:
+            pass
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
