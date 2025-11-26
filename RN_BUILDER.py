@@ -2152,11 +2152,27 @@ def _attach_builder_to_RNBuilder():
         for row in list(getattr(self, 'acao_rows', [])):
             try:
                 tipo = (row.var_tipo.get() or "").strip()
+                texto = (row.var_texto.get() or "").strip()
             except Exception:
                 continue
 
             tipo_norm = tipo.lower()
-            if tipo_norm.startswith("encerrar fluxo") or tipo_norm.startswith("retornar a tarefa") or tipo_norm.startswith("retomar tarefa"):
+            texto_norm = texto.lower()
+            is_closing_text = texto_norm in {
+                _t("closing_partial").lower(),
+                _t("closing_total").lower(),
+            } or (
+                "encerrar" in texto_norm and "fluxo" in texto_norm
+            )
+            is_return_text = "retornar" in texto_norm and "tarefa" in texto_norm
+
+            if (
+                tipo_norm.startswith("encerrar fluxo")
+                or tipo_norm.startswith("retornar a tarefa")
+                or tipo_norm.startswith("retomar tarefa")
+                or is_closing_text
+                or is_return_text
+            ):
                 try:
                     row.destroy()
                 except Exception:
@@ -2168,7 +2184,10 @@ def _attach_builder_to_RNBuilder():
                 removed = True
         if removed:
             self._relayout_acao_rows()
-            self.after_idle(self._ensure_min_builder_rows)
+            try:
+                self._ensure_min_builder_rows()
+            except Exception:
+                pass
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
