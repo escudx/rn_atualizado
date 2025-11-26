@@ -2143,20 +2143,21 @@ def _attach_builder_to_RNBuilder():
                 pass
 
     def _prune_closing_actions(self: 'RNBuilder'):
-        """Remove ações de encerrar/retornar para que não vazem para a próxima RN."""
+        """Remove ações de encerramento/retorno de forma segura e consistente."""
         keywords = ("encerrar", "retornar", "retomar")
-        rows = list(getattr(self, "acao_rows", []))
-        rows_to_remove = []
+        to_remove = []
 
-        for row in rows:
+        for row in list(getattr(self, "acao_rows", [])):
             try:
                 tipo_norm = (row.var_tipo.get() or "").lower()
+                texto_norm = (row.var_texto.get() or "").lower()
             except Exception:
                 continue
-            if any(k in tipo_norm for k in keywords):
-                rows_to_remove.append(row)
 
-        for row in rows_to_remove:
+            if any(k in tipo_norm for k in keywords) or any(k in texto_norm for k in keywords):
+                to_remove.append(row)
+
+        for row in to_remove:
             try:
                 row.destroy()
             except Exception:
@@ -2166,8 +2167,9 @@ def _attach_builder_to_RNBuilder():
             except ValueError:
                 pass
 
-        if rows_to_remove:
+        if to_remove:
             self._relayout_acao_rows()
+            self._ensure_min_builder_rows()
             self._update_preview()
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
@@ -2830,7 +2832,6 @@ def _attach_panels_to_RNBuilder():
         except Exception:
             pass
 
-        self._prune_closing_actions()
         self._update_preview()
 
     def _clear_rns(self: 'RNBuilder', *, confirm=True):
