@@ -153,7 +153,7 @@ def _show_fatal_error(exc: BaseException):
 
 sys.excepthook = lambda et, ev, tb: _show_fatal_error(ev)
 
-ctk.set_appearance_mode("system")
+ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 CUR_L, CUR_R = "“", "”"
@@ -2492,8 +2492,8 @@ def _attach_panels_to_RNBuilder():
     def _build_panels(self: 'RNBuilder'):
         parent = self.right_pane
         parent.grid_columnconfigure(0, weight=1)
-        parent.grid_rowconfigure(0, weight=4)
-        parent.grid_rowconfigure(1, weight=5)
+        parent.grid_rowconfigure(0, weight=35)
+        parent.grid_rowconfigure(1, weight=65)
 
         self.preview_collapsible = CollapsibleGroup(
             parent,
