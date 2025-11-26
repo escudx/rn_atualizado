@@ -8,7 +8,7 @@ import customtkinter as ctk
 def _enable_dpi_awareness():
     try:
         import ctypes
-        # Nível 2 = Per Monitor Aware (Corrige bug de transparência no monitor externo)
+        # Nível 2 = Per Monitor Aware (corrige transparência/ghosting entre monitores)
         ctypes.windll.shcore.SetProcessDpiAwareness(2)
     except Exception:
         try:
@@ -19,6 +19,19 @@ def _enable_dpi_awareness():
 
 
 _enable_dpi_awareness()
+
+# Permite forçar uma postura neutra de escala quando houver conflito de drivers/DPI
+if os.environ.get("RN_FORCE_NEUTRAL_DPI", "1") != "0":
+    try:
+        if hasattr(ctk, "deactivate_automatic_dpi_awareness"):
+            ctk.deactivate_automatic_dpi_awareness()
+    except Exception:
+        pass
+    try:
+        ctk.set_window_scaling(1.0)
+        ctk.set_widget_scaling(1.0)
+    except Exception:
+        pass
 
 
 def _apply_dark_title_bar(win):
@@ -2129,6 +2142,20 @@ def _attach_builder_to_RNBuilder():
             except Exception:
                 pass
 
+    def _prune_closing_actions(self: 'RNBuilder'):
+        removed = False
+        for row in list(getattr(self, 'acao_rows', [])):
+            try:
+                if row.var_tipo.get().startswith("Encerrar Fluxo"):
+                    row.destroy()
+                    self.acao_rows.remove(row)
+                    removed = True
+            except Exception:
+                continue
+        if removed:
+            self._relayout_acao_rows()
+            self.after_idle(self._ensure_min_builder_rows)
+
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
             if hasattr(self, 'frm_conds_body') and not getattr(self, 'cond_rows', []):
@@ -2487,11 +2514,22 @@ def _attach_panels_to_RNBuilder():
             pass
 
         left_btnbar = ctk.CTkFrame(preview_group, fg_color="transparent")
-        left_btnbar.grid(row=1, column=0, sticky="w", padx=0, pady=(0, 2))
-        ctk.CTkButton(left_btnbar, text="Adicionar RN", command=self._add_rn, width=160).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(left_btnbar, text="Adicionar RN e preparar oposto (Sim/Não)",
-                      command=self._add_rn_and_prepare_opposite, width=300).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(left_btnbar, text="Limpar pré-visualização", command=self._clear_preview, width=200).pack(side="left")
+        left_btnbar.grid(row=1, column=0, sticky="ew", padx=0, pady=(4, 6))
+        left_btnbar.grid_columnconfigure(0, weight=1)
+        left_btnbar.grid_columnconfigure(1, weight=1)
+
+        btn_add = ctk.CTkButton(left_btnbar, text="Adicionar RN", command=self._add_rn)
+        btn_add.grid(row=0, column=0, sticky="ew", padx=(0, 6), pady=(0, 4))
+
+        btn_add_op = ctk.CTkButton(
+            left_btnbar,
+            text="Adicionar RN e preparar oposto (Sim/Não)",
+            command=self._add_rn_and_prepare_opposite,
+        )
+        btn_add_op.grid(row=0, column=1, sticky="ew", padx=(0, 0), pady=(0, 4))
+
+        btn_clear = ctk.CTkButton(left_btnbar, text="Limpar pré-visualização", command=self._clear_preview)
+        btn_clear.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(2, 0))
 
         self.rn_collapsible = CollapsibleGroup(
             parent,
@@ -2500,8 +2538,8 @@ def _attach_panels_to_RNBuilder():
         )
         self.rn_collapsible.grid(row=1, column=0, padx=(0,0), pady=(0,0), sticky="nsew")
         rn_group = self.rn_collapsible.get_inner_frame()
-        rn_group.grid_rowconfigure(2, weight=2)
-        rn_group.grid_rowconfigure(3, weight=3)
+        rn_group.grid_rowconfigure(2, weight=1, minsize=140)
+        rn_group.grid_rowconfigure(3, weight=2, minsize=180)
         rn_group.grid_columnconfigure(0, weight=1)
 
         flow_bar = ctk.CTkFrame(rn_group, fg_color="transparent")
@@ -2750,6 +2788,8 @@ def _attach_panels_to_RNBuilder():
         rn = _compose_rn(idx, when, cond, acoes)
         current.append(rn)
         self._refresh_textbox()
+        self._prune_closing_actions()
+        self._update_preview()
 
     def _add_rn_and_prepare_opposite(self: 'RNBuilder'):
         self._add_rn()
