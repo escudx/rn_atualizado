@@ -2151,10 +2151,12 @@ def _attach_builder_to_RNBuilder():
         removed = False
         for row in list(getattr(self, 'acao_rows', [])):
             try:
-                tipo = row.var_tipo.get()
+                tipo = (row.var_tipo.get() or "").strip()
             except Exception:
                 continue
-            if tipo.startswith("Encerrar Fluxo") or tipo == "Retomar Tarefa":
+
+            tipo_norm = tipo.lower()
+            if tipo_norm.startswith("encerrar fluxo") or tipo_norm.startswith("retornar a tarefa") or tipo_norm.startswith("retomar tarefa"):
                 try:
                     row.destroy()
                 except Exception:
@@ -2504,17 +2506,18 @@ def _attach_panels_to_RNBuilder():
     def _build_panels(self: 'RNBuilder'):
         parent = self.right_pane
         parent.grid_columnconfigure(0, weight=1)
-        parent.grid_rowconfigure(0, weight=35, minsize=220)
-        parent.grid_rowconfigure(1, weight=65, minsize=260)
+        parent.grid_rowconfigure(0, weight=0, minsize=260)
+        parent.grid_rowconfigure(1, weight=1, minsize=260)
 
         self.preview_collapsible = CollapsibleGroup(
             parent,
             text="Pré-visualização da RN atual",
             start_expanded=True
         )
-        self.preview_collapsible.grid(row=0, column=0, padx=(0,0), pady=(0,8), sticky="nsew")
+        self.preview_collapsible.grid(row=0, column=0, padx=(0,0), pady=(0,12), sticky="nsew")
         preview_group = self.preview_collapsible.get_inner_frame()
-        preview_group.grid_rowconfigure(0, weight=1, minsize=150)
+        preview_group.grid_rowconfigure(0, weight=1, minsize=170)
+        preview_group.grid_rowconfigure(1, weight=0, minsize=88)
         preview_group.grid_columnconfigure(0, weight=1)
 
         self.prev_box = SafeCTkTextbox(preview_group)
@@ -2526,7 +2529,7 @@ def _attach_panels_to_RNBuilder():
             pass
 
         left_btnbar = ctk.CTkFrame(preview_group, fg_color="transparent")
-        left_btnbar.grid(row=1, column=0, sticky="ew", padx=0, pady=(4, 6))
+        left_btnbar.grid(row=1, column=0, sticky="ew", padx=0, pady=(6, 6))
         left_btnbar.grid_columnconfigure(0, weight=1)
         left_btnbar.grid_columnconfigure(1, weight=1)
 
@@ -2827,6 +2830,7 @@ def _attach_panels_to_RNBuilder():
         self._destroy_rows(getattr(self, 'acao_rows', []))
         if hasattr(self, '_ensure_min_builder_rows'):
             self._ensure_min_builder_rows()
+        self._prune_closing_actions()
         self._update_preview()
 
     def _clear_rns(self: 'RNBuilder', *, confirm=True):
