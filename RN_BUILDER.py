@@ -2143,18 +2143,20 @@ def _attach_builder_to_RNBuilder():
                 pass
 
     def _prune_closing_actions(self: 'RNBuilder'):
-        """Remove ações de encerramento/retorno de forma segura e consistente."""
+        """Remove ações de encerramento/retorno/retomada sem corromper a lista."""
         keywords = ("encerrar", "retornar", "retomar")
         to_remove = []
 
         for row in list(getattr(self, "acao_rows", [])):
             try:
                 tipo_norm = (row.var_tipo.get() or "").lower()
-                texto_norm = (row.var_texto.get() or "").lower()
+                texto_norm = (getattr(row, "var_texto", tk.StringVar(value="")).get() or "").lower()
+                fluxo_norm = (getattr(row, "var_fluxo", tk.StringVar(value="")).get() or "").lower()
             except Exception:
                 continue
 
-            if any(k in tipo_norm for k in keywords) or any(k in texto_norm for k in keywords):
+            combined = f"{tipo_norm} {texto_norm} {fluxo_norm}"
+            if any(k in combined for k in keywords):
                 to_remove.append(row)
 
         for row in to_remove:
@@ -2167,10 +2169,9 @@ def _attach_builder_to_RNBuilder():
             except ValueError:
                 pass
 
-        if to_remove:
-            self._relayout_acao_rows()
-            self._ensure_min_builder_rows()
-            self._update_preview()
+        self._relayout_acao_rows()
+        self._ensure_min_builder_rows()
+        self._update_preview()
 
     def _ensure_min_builder_rows(self: 'RNBuilder'):
         try:
@@ -2806,7 +2807,6 @@ def _attach_panels_to_RNBuilder():
         current.append(rn)
         self._refresh_textbox()
         self._prune_closing_actions()
-        self._update_preview()
 
     def _add_rn_and_prepare_opposite(self: 'RNBuilder'):
         self._add_rn()
@@ -2831,8 +2831,7 @@ def _attach_panels_to_RNBuilder():
                         self.var_resposta.set('Sim')
         except Exception:
             pass
-
-        self._update_preview()
+        self._prune_closing_actions()
 
     def _clear_rns(self: 'RNBuilder', *, confirm=True):
         if (not confirm) or messagebox.askyesno("Limpar", "Remover todas as RNs?"):
