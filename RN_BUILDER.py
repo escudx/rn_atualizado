@@ -2212,7 +2212,7 @@ def _attach_builder_to_RNBuilder():
         self.cond_rows.append(row)
         self._relayout_cond_rows()
         self._update_preview()
-        self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 1.0)
+        self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 0.0)
 
     def _add_acao(self: 'RNBuilder'):
         preset_value = (self.var_resp_preset_free.get().strip() if self.var_resp_preset.get() == RESP_TEXT_FREE
@@ -2231,7 +2231,7 @@ def _attach_builder_to_RNBuilder():
         self.acao_rows.append(row)
         self._relayout_acao_rows()
         self._update_preview()
-        self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 1.0)
+        self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 0.0)
 
     def _insert_frequent_flow(self: 'RNBuilder'):
         try:
@@ -2256,7 +2256,7 @@ def _attach_builder_to_RNBuilder():
             self._relayout_acao_rows()
             self._update_preview()
             self.var_freq.set("Cadastro")
-            self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 1.0)
+            self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 0.0)
         except Exception as e:
             messagebox.showerror("Falha ao inserir ação frequente", str(e))
 
@@ -2286,7 +2286,7 @@ def _attach_builder_to_RNBuilder():
             self._relayout_acao_rows()
             self._update_preview()
             self.var_freq_ret.set("")
-            self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 1.0)
+            self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 0.0)
         except Exception as e:
             messagebox.showerror("Falha ao inserir 'Retornar a tarefa'", str(e))
 
@@ -2314,7 +2314,7 @@ def _attach_builder_to_RNBuilder():
             self._update_preview()
             self.var_freq_cond_field.set("")
             self.var_freq_cond_resp.set("")
-            self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 1.0)
+            self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 0.0)
         except Exception as e:
             messagebox.showerror("Falha ao inserir condição rápida", str(e))
 
@@ -2340,7 +2340,7 @@ def _attach_builder_to_RNBuilder():
             self.acao_rows.append(row)
             self._relayout_acao_rows()
             self._update_preview()
-            self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 1.0)
+            self.after(100, self.builder_scroll._parent_canvas.yview_moveto, 0.0)
         except Exception as e:
             messagebox.showerror("Falha ao inserir ação de encerramento", str(e))
 
@@ -2555,7 +2555,7 @@ def _attach_panels_to_RNBuilder():
         rn_group.grid_columnconfigure(0, weight=1)
 
         flow_bar = ctk.CTkFrame(rn_group, fg_color="transparent")
-        flow_bar.grid(row=0, column=0, sticky="ew", padx=0, pady=(0, 6))
+        flow_bar.grid(row=0, column=0, sticky="ew", padx=0, pady=(8, 6))
         flow_bar.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(flow_bar, text="Fluxo:", font=ctk.CTkFont(size=13, weight="bold")).grid(row=0, column=0, sticky="w", padx=(0, 8))
@@ -2576,7 +2576,7 @@ def _attach_panels_to_RNBuilder():
         ctk.CTkButton(flow_btns, text="Excluir", width=80, command=self._delete_flow, fg_color=DANGER_BG, hover_color=DANGER_HOVER).pack(side="left")
 
         right_btnbar = ctk.CTkFrame(rn_group, fg_color="transparent")
-        right_btnbar.grid(row=1, column=0, sticky="w", padx=0, pady=(0, 6))
+        right_btnbar.grid(row=1, column=0, sticky="w", padx=0, pady=(4, 8))
         ctk.CTkButton(right_btnbar, text="Copiar RN", command=self._copy_single_rn, width=120).pack(side="left", padx=(0, 6))
         ctk.CTkButton(right_btnbar, text="Copiar tudo", command=self._copy_all, width=110).pack(side="left", padx=(0, 6))
         ctk.CTkButton(right_btnbar, text="Salvar .txt", command=self._save_txt, width=110).pack(side="left", padx=(0, 6))
