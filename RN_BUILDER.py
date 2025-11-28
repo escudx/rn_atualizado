@@ -87,6 +87,80 @@ def _mix_hex(color_a: str, color_b: str, factor: float) -> str:
         return color_a
 
 
+def _bind_undo_redo(widget):
+    """Adiciona suporte a Ctrl+Z/Ctrl+Y para CTkEntry/CTkTextbox e equivalentes."""
+    target = getattr(widget, "_textbox", getattr(widget, "_entry", widget))
+
+    def _get_text():
+        try:
+            return target.get("1.0", "end-1c")
+        except Exception:
+            try:
+                return target.get()
+            except Exception:
+                return ""
+
+    def _set_text(value: str):
+        try:
+            target.configure(state="normal")
+        except Exception:
+            pass
+        try:
+            target.delete("1.0", "end")
+            target.insert("1.0", value)
+        except Exception:
+            try:
+                target.delete(0, "end")
+                target.insert(0, value)
+            except Exception:
+                pass
+
+    try:
+        target.configure(undo=True, autoseparators=True, maxundo=100)
+    except Exception:
+        pass
+
+    if getattr(target, "_undo_bound", False):
+        return
+    target._undo_bound = True
+
+    undo_stack: list[str] = []
+    redo_stack: list[str] = []
+
+    def _push_state(_=None):
+        txt = _get_text()
+        if undo_stack and undo_stack[-1] == txt:
+            return
+        undo_stack.append(txt)
+        if len(undo_stack) > 100:
+            undo_stack.pop(0)
+        redo_stack.clear()
+
+    def _undo(_=None):
+        if not undo_stack:
+            return "break"
+        current = _get_text()
+        if not redo_stack or redo_stack[-1] != current:
+            redo_stack.append(current)
+        if len(undo_stack) >= 2:
+            undo_stack.pop()
+            _set_text(undo_stack[-1])
+        return "break"
+
+    def _redo(_=None):
+        if not redo_stack:
+            return "break"
+        val = redo_stack.pop()
+        _push_state()
+        _set_text(val)
+        return "break"
+
+    target.bind("<KeyRelease>", _push_state, add="+")
+    target.bind("<Control-z>", _undo, add="+")
+    target.bind("<Control-y>", _redo, add="+")
+    _push_state()
+
+
 # --- PALETA ESTILO CÁPSULA (V6) ---
 # Fundo cinza escuro para os blocos (Cápsulas)
 CAPSULE_BG = ("#f0f0f0", "#2b2b2b")
@@ -326,8 +400,12 @@ def _acao_tarefa_texto(tarefa: str, responsavel: str, sla_txt: str) -> str:
         base += f", {sla_txt}"
     return base
 
-def _acao_status_texto(status: str) -> str:
-    return _t("action_status").format(status=f"{CUR_L}{status}{CUR_R}")
+def _acao_status_texto(status: str, entidade: str = "") -> str:
+    status_fmt = f"{CUR_L}{status}{CUR_R}"
+    ent = entidade.strip()
+    if ent:
+        return f"o status {ent} é atualizado para {status_fmt}"
+    return _t("action_status").format(status=status_fmt)
 
 def _acao_fluxo_texto(fluxo: str) -> str:
     return _t("action_flow").format(flow=f"{CUR_L}{fluxo}{CUR_R}")
@@ -460,6 +538,8 @@ class MemManagerTab(ctk.CTkFrame):
         header = ctk.CTkFrame(self, corner_radius=8, fg_color=CAPSULE_BG, border_width=1, border_color=CAPSULE_BORDER)
         header.grid(row=0, column=0, columnspan=header_cols, sticky="ew", pady=(0, 12))
         header.grid_columnconfigure(0, weight=1)
+        header.grid_columnconfigure(1, weight=0)
+        header.grid_columnconfigure(2, weight=0)
 
         ctk.CTkLabel(
             header,
@@ -469,6 +549,15 @@ class MemManagerTab(ctk.CTkFrame):
 
         self.count_var = tk.StringVar(value="")
         ctk.CTkLabel(header, textvariable=self.count_var, font=ctk.CTkFont(size=12), text_color=("gray50", "gray70")).grid(row=0, column=1, sticky="e", padx=12, pady=(10, 0))
+
+        ctk.CTkButton(
+            header,
+            text="Limpar lista",
+            fg_color=DANGER_BG,
+            hover_color=DANGER_HOVER,
+            width=110,
+            command=self._clear_list,
+        ).grid(row=0, column=2, sticky="e", padx=(4, 12), pady=(12, 12))
 
         if hint_text and not side_by_side:
             ctk.CTkLabel(header, text=hint_text, justify="left", wraplength=480, text_color=HINT_TEXT).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(6, 10))
@@ -487,6 +576,7 @@ class MemManagerTab(ctk.CTkFrame):
         box_h = 140 if side_by_side else 100
         self.import_box = ctk.CTkTextbox(import_card, height=box_h)
         self.import_box.grid(row=1, column=0, sticky="nsew", padx=12)
+        _bind_undo_redo(self.import_box)
 
         if hint_text and side_by_side:
             ctk.CTkLabel(import_card, text=hint_text, justify="left", wraplength=300, text_color=HINT_TEXT, font=ctk.CTkFont(size=11)).grid(row=2, column=0, sticky="w", padx=12, pady=(6, 0))
@@ -523,6 +613,7 @@ class MemManagerTab(ctk.CTkFrame):
 
         self.new_entry = ctk.CTkEntry(footer, placeholder_text=placeholder)
         self.new_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        _bind_undo_redo(self.new_entry)
         self.new_entry.bind("<Return>", self._add_item)
         self.add_btn = ctk.CTkButton(footer, text=add_button_text, width=100, command=self._add_item, fg_color=PRIMARY_BTN, hover_color=PRIMARY_HOVER)
         self.add_btn.grid(row=0, column=1, sticky="e")
@@ -535,6 +626,15 @@ class MemManagerTab(ctk.CTkFrame):
     def _is_allowed(self, v):
         norm = self._norm(v)
         return norm.lower() not in self.forbidden if norm else False
+
+    def _clear_list(self):
+        if messagebox.askyesno("Limpar", "Remover todos os itens desta lista?", parent=self.app):
+            self.mem_list.clear()
+            self._rebuild_list()
+            try:
+                self.refresh_cb()
+            except Exception:
+                pass
 
     def _add_item(self, e=None):
         v = self._norm(self.new_entry.get())
@@ -619,7 +719,14 @@ class LinhaCondicao(ctk.CTkFrame):
         self.grid_columnconfigure(2, weight=0)
 
         ctk.CTkLabel(self, text="Campo:").grid(row=0, column=0, sticky="e", padx=(4, 6), pady=(4, 2))
-        ctk.CTkEntry(self, textvariable=self.var_campo).grid(row=0, column=1, sticky="ew", padx=(0, 4), pady=(4, 2))
+        cb_campo = ctk.CTkComboBox(self, values=self.winfo_toplevel()._mem_get_fields(), variable=self.var_campo)
+        cb_campo.grid(row=0, column=1, sticky="ew", padx=(0, 4), pady=(4, 2))
+        try:
+            self.winfo_toplevel()._mem_register_field_combo(cb_campo)
+            self.winfo_toplevel()._mem_bind_combo_capture(cb_campo, lambda: cb_campo.get(), bucket="field")
+        except Exception:
+            pass
+        _bind_undo_redo(cb_campo)
 
         ctk.CTkLabel(self, text="Operador:").grid(row=1, column=0, sticky="e", padx=(4, 6), pady=(0, 2))
         ctk.CTkComboBox(
@@ -630,7 +737,9 @@ class LinhaCondicao(ctk.CTkFrame):
         ).grid(row=1, column=1, sticky="ew", padx=(0, 4), pady=(0, 2))
 
         ctk.CTkLabel(self, text="Valor / Resposta:").grid(row=2, column=0, sticky="e", padx=(4, 6), pady=(0, 2))
-        ctk.CTkEntry(self, textvariable=self.var_valor).grid(row=2, column=1, sticky="ew", padx=(0, 4), pady=(0, 4))
+        entry_valor = ctk.CTkEntry(self, textvariable=self.var_valor)
+        entry_valor.grid(row=2, column=1, sticky="ew", padx=(0, 4), pady=(0, 4))
+        _bind_undo_redo(entry_valor)
 
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.grid(row=0, column=2, rowspan=3, sticky="ne", padx=(0, 4), pady=(4, 4))
@@ -716,6 +825,7 @@ class LinhaAcao(ctk.CTkFrame):
         self.var_sla_dias = tk.IntVar(value=2)
         self.var_sla_marco = tk.StringVar(value="Prazo Fatal da Peça")
         self.var_sla_fer = tk.BooleanVar(value=True)
+        self.var_status_entidade = tk.StringVar()
         self.var_status = tk.StringVar()
         self.var_fluxo = tk.StringVar()
         self.var_texto = tk.StringVar()
@@ -865,6 +975,11 @@ class LinhaAcao(ctk.CTkFrame):
             cb_tarefa = ctk.CTkComboBox(self.frm_dyn, values=self._app()._mem_get_tasks(), variable=self.var_tarefa)
             cb_tarefa.grid(row=row, column=1, sticky="ew", pady=(0, 2))
             self._register_task_combo(cb_tarefa, lambda: self.var_tarefa.get())
+            try:
+                self._app()._mem_bind_combo_capture(cb_tarefa, lambda: cb_tarefa.get(), bucket="task")
+            except Exception:
+                pass
+            _bind_undo_redo(cb_tarefa)
             row += 1
 
             ctk.CTkLabel(self.frm_dyn, text="Responsável:").grid(row=row, column=0, sticky="e", pady=(2, 2), padx=(0, 6))
@@ -884,6 +999,7 @@ class LinhaAcao(ctk.CTkFrame):
                 textvariable=self.var_resp_livre,
                 placeholder_text="Responsável (texto livre)",
             )
+            _bind_undo_redo(self.entry_resp_livre)
 
             def _toggle_resp(*_):
                 if self.var_resp.get() == RESP_TEXT_FREE:
@@ -955,18 +1071,32 @@ class LinhaAcao(ctk.CTkFrame):
             row = marco_row + 1 if cb_marco.winfo_ismapped() else marco_row
 
         elif t == "Atualizar Status":
-            ctk.CTkLabel(self.frm_dyn, text="Status:").grid(row=0, column=0, sticky="e", pady=(0, 2), padx=(0, 6))
-            ctk.CTkEntry(self.frm_dyn, textvariable=self.var_status).grid(row=0, column=1, sticky="ew", pady=(0, 2))
+            ctk.CTkLabel(self.frm_dyn, text="Entidade (ex: do Processo):").grid(row=0, column=0, sticky="e", pady=(0, 2), padx=(0, 6))
+            ent_entry = ctk.CTkEntry(self.frm_dyn, textvariable=self.var_status_entidade)
+            ent_entry.grid(row=0, column=1, sticky="ew", pady=(0, 2))
+            _bind_undo_redo(ent_entry)
+
+            ctk.CTkLabel(self.frm_dyn, text="Novo Status:").grid(row=1, column=0, sticky="e", pady=(2, 2), padx=(0, 6))
+            status_entry = ctk.CTkEntry(self.frm_dyn, textvariable=self.var_status)
+            status_entry.grid(row=1, column=1, sticky="ew", pady=(2, 2))
+            _bind_undo_redo(status_entry)
 
         elif t == "Acionar Fluxo":
             ctk.CTkLabel(self.frm_dyn, text="Fluxo:").grid(row=0, column=0, sticky="e", pady=(0, 2), padx=(0, 6))
-            ctk.CTkEntry(self.frm_dyn, textvariable=self.var_fluxo).grid(row=0, column=1, sticky="ew", pady=(0, 2))
+            fluxo_entry = ctk.CTkEntry(self.frm_dyn, textvariable=self.var_fluxo)
+            fluxo_entry.grid(row=0, column=1, sticky="ew", pady=(0, 2))
+            _bind_undo_redo(fluxo_entry)
 
         elif t == "Retornar a Tarefa":
             ctk.CTkLabel(self.frm_dyn, text="Retornar a tarefa:").grid(row=0, column=0, sticky="e", pady=(0, 2), padx=(0, 6))
             cb_ret = ctk.CTkComboBox(self.frm_dyn, values=self._app()._mem_get_tasks(), variable=self.var_ret_tarefa)
             cb_ret.grid(row=0, column=1, sticky="ew", pady=(0, 2))
             self._register_task_combo(cb_ret, lambda: self.var_ret_tarefa.get())
+            try:
+                self._app()._mem_bind_combo_capture(cb_ret, lambda: cb_ret.get(), bucket="task")
+            except Exception:
+                pass
+            _bind_undo_redo(cb_ret)
             ctk.CTkCheckBox(
                 self.frm_dyn,
                 text="Reiniciar SLA",
@@ -979,13 +1109,15 @@ class LinhaAcao(ctk.CTkFrame):
         elif t.startswith("Encerrar Fluxo"):
             pass 
 
-        else: 
+        else:
             ctk.CTkLabel(self.frm_dyn, text="Texto:").grid(row=0, column=0, sticky="e", pady=(0, 2), padx=(0, 6))
-            ctk.CTkEntry(self.frm_dyn, textvariable=self.var_texto).grid(row=0, column=1, sticky="ew", pady=(0, 2))
+            texto_entry = ctk.CTkEntry(self.frm_dyn, textvariable=self.var_texto)
+            texto_entry.grid(row=0, column=1, sticky="ew", pady=(0, 2))
+            _bind_undo_redo(texto_entry)
 
         for v in (
             self.var_tarefa, self.var_resp, self.var_resp_livre, self.var_sla_tipo, self.var_sla_dias,
-            self.var_sla_marco, self.var_sla_fer, self.var_status, self.var_fluxo, self.var_texto,
+            self.var_sla_marco, self.var_sla_fer, self.var_status_entidade, self.var_status, self.var_fluxo, self.var_texto,
             self.var_ret_tarefa, self.var_ret_restart,
         ):
             try:
@@ -1005,6 +1137,7 @@ class LinhaAcao(ctk.CTkFrame):
             "sla_dias": int(self.var_sla_dias.get()),
             "sla_marco": self.var_sla_marco.get(),
             "sla_fer": bool(self.var_sla_fer.get()),
+            "status_entidade": self.var_status_entidade.get(),
             "status": self.var_status.get(),
             "fluxo": self.var_fluxo.get(),
             "texto": self.var_texto.get(),
@@ -1053,7 +1186,8 @@ class LinhaAcao(ctk.CTkFrame):
             self.var_sla_fer.set(bool(d.get("sla_fer", True)))
         except (ValueError, TypeError):
              self.var_sla_fer.set(True)
-             
+
+        self.var_status_entidade.set(d.get("status_entidade", ""))
         self.var_status.set(d.get("status", ""))
         self.var_fluxo.set(d.get("fluxo", ""))
         self.var_texto.set(d.get("texto", ""))
@@ -1080,7 +1214,8 @@ class LinhaAcao(ctk.CTkFrame):
             return _acao_tarefa_texto(tarefa, resp, sla)
         if t == "Atualizar Status":
             st = self.var_status.get().strip()
-            return _acao_status_texto(st) if st else ""
+            ent = self.var_status_entidade.get().strip()
+            return _acao_status_texto(st, ent) if st else ""
         if t == "Acionar Fluxo":
             fx = self.var_fluxo.get().strip()
             return _acao_fluxo_texto(fx) if fx else ""
@@ -2543,10 +2678,10 @@ def _attach_panels_to_RNBuilder():
             text="RNs (lista final)",
             start_expanded=True
         )
-        self.rn_collapsible.grid(row=1, column=0, padx=(0,0), pady=(0,0), sticky="nsew")
+        self.rn_collapsible.grid(row=1, column=0, padx=(0,0), pady=(0,8), sticky="nsew")
         rn_group = self.rn_collapsible.get_inner_frame()
-        rn_group.grid_rowconfigure(2, weight=1, minsize=140)
-        rn_group.grid_rowconfigure(3, weight=2, minsize=180)
+        rn_group.grid_rowconfigure(2, weight=4, minsize=200)
+        rn_group.grid_rowconfigure(3, weight=1, minsize=120)
         rn_group.grid_columnconfigure(0, weight=1)
 
         flow_bar = ctk.CTkFrame(rn_group, fg_color="transparent")
