@@ -115,11 +115,6 @@ def _bind_undo_redo(widget):
             except Exception:
                 pass
 
-    try:
-        target.configure(undo=True, autoseparators=True, maxundo=100)
-    except Exception:
-        pass
-
     if getattr(target, "_undo_bound", False):
         return
     target._undo_bound = True
@@ -127,38 +122,59 @@ def _bind_undo_redo(widget):
     undo_stack: list[str] = []
     redo_stack: list[str] = []
 
-    def _push_state(_=None):
+    def _push_state_now():
         txt = _get_text()
         if undo_stack and undo_stack[-1] == txt:
             return
         undo_stack.append(txt)
-        if len(undo_stack) > 100:
+        if len(undo_stack) > 200:
             undo_stack.pop(0)
         redo_stack.clear()
 
+    def _push_state(event=None):
+        try:
+            target.after(5, _push_state_now)
+        except Exception:
+            _push_state_now()
+
     def _undo(_=None):
-        if not undo_stack:
+        if len(undo_stack) < 2:
             return "break"
         current = _get_text()
         if not redo_stack or redo_stack[-1] != current:
             redo_stack.append(current)
-        if len(undo_stack) >= 2:
-            undo_stack.pop()
-            _set_text(undo_stack[-1])
+        undo_stack.pop()
+        _set_text(undo_stack[-1])
         return "break"
 
     def _redo(_=None):
         if not redo_stack:
             return "break"
         val = redo_stack.pop()
-        _push_state()
+        undo_stack.append(val)
         _set_text(val)
         return "break"
 
-    target.bind("<KeyRelease>", _push_state, add="+")
+    # Captura de eventos ampla, incluindo colagens via mouse/context menu.
+    for sequence in (
+        "<KeyRelease>",
+        "<<Paste>>",
+        "<<Cut>>",
+        "<Control-v>",
+        "<Control-BackSpace>",
+        "<Control-Delete>",
+        "<FocusOut>",
+    ):
+        try:
+            target.bind(sequence, _push_state, add="+")
+        except Exception:
+            pass
+
     target.bind("<Control-z>", _undo, add="+")
     target.bind("<Control-y>", _redo, add="+")
-    _push_state()
+
+    # Estado inicial
+    _push_state_now()
 
 
 # --- PALETA ESTILO CÁPSULA (V6) ---
